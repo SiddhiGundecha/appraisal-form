@@ -1,66 +1,64 @@
-// Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../api";               // ✅ IMPORTANT
 import "../styles/Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
 
-  // Role dropdown sirf UI ke liye rakha hai (dummy)
-  // Actual role localStorage ke user se aayega
-  const [role, setRole] = useState("faculty"); // 🔴 dummy UI state
+  const [role, setRole] = useState("faculty"); // UI only
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  // ✅ ONE handleLogin ONLY
+  const handleLogin = async (e) => {
+    console.log("LOGIN BUTTON CLICKED"); // 🧪 DEBUG LINE
     e.preventDefault();
     setError("");
 
-    // ======================================================
-    // 🔥 FETCH ALL USERS (DUMMY FRONTEND AUTH)
-    // In real system → backend API call
-    // ======================================================
-    const users = JSON.parse(localStorage.getItem("facultyUsers")) || [];
+    try {
+      console.log("Calling backend API");
 
-    // ======================================================
-    // 🔥 FIND MATCHING USER
-    // ======================================================
-    const user = users.find(
-      (u) => u.email === email && u.password === password
-    );
+      // 🔥 Django JWT login
+      const response = await API.post("token/", {
+        username: email,   // adjust if backend expects username
+        password: password,
+      });
 
-    if (!user) {
-      setError("Invalid email or password.");
-      return;
-    }
+      console.log("Token received");
 
-    // ======================================================
-    // 🔥 SAVE LOGGED-IN USER (SESSION)
-    // Used by Profile, Appraisal, Dashboards
-    // Dummy frontend storage
-    // ======================================================
-    if (remember) {
+      // 🔐 Save token
+      if (remember) {
+        localStorage.setItem("access_token", response.data.access);
+        localStorage.setItem("refresh_token", response.data.refresh);
+      } else {
+        sessionStorage.setItem("access_token", response.data.access);
+      }
+
+      // 🔥 Fetch user profile
+      const profileRes = await API.get("me/");
+      const user = profileRes.data;
+
       localStorage.setItem("loggedInUser", JSON.stringify(user));
-    } else {
-      sessionStorage.setItem("loggedInUser", JSON.stringify(user));
-    }
 
-    // ======================================================
-    // 🔥 ROLE-BASED REDIRECTION
-    // Role is taken from ACCOUNT, not dropdown
-    // ======================================================
-    if (user.role === "admin") {
-      navigate("/admin/dashboard");
-    } else if (user.role === "faculty") {
-      navigate("/faculty/dashboard");
-    } else if (user.role === "hod") {
-      navigate("/hod/dashboard");
-    } else if (user.role === "principal") {
-      navigate("/principal/dashboard");
-    } else {
-      setError("Unauthorized role.");
+      // 🔁 ROLE-BASED REDIRECT
+      if (user.role === "Admin") {
+        navigate("/admin/dashboard");
+      } else if (user.role === "FACULTY") {
+        navigate("/faculty/dashboard");
+      } else if (user.role === "HOD") {
+        navigate("/hod/dashboard");
+      } else if (user.role === "PRINCIPAL") {
+        navigate("/principal/dashboard");
+      } else {
+        setError("Unauthorized role");
+      }
+
+    } catch (err) {
+      console.error(err);
+      setError("Invalid email or password");
     }
   };
 
