@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/profile.css";
+import API from "../../api";
 
 const DEFAULT_AVATAR = "https://i.pravatar.cc/300?img=12";
 
@@ -31,14 +32,14 @@ export default function Profile() {
   const [profileData, setProfileData] = useState(initialProfile);
   const [editData, setEditData] = useState(initialProfile);
 
-  useEffect(() => {
-    const storedProfile = localStorage.getItem("userProfile");
-    if (storedProfile) {
-      const parsed = JSON.parse(storedProfile);
-      setProfileData(parsed);
-      setEditData(parsed);
-    }
-  }, []);
+ useEffect(() => {
+  API.get("me/")
+    .then(res => {
+      setProfileData(res.data);
+      setEditData(res.data);
+    })
+    .catch(() => navigate("/login"));
+}, []);
 
   /* ================= PROFILE IMAGE ================= */
 
@@ -185,11 +186,25 @@ export default function Profile() {
     setIsEditing(false);
   };
 
-  const saveProfile = () => {
-    setProfileData(editData);
-    localStorage.setItem("userProfile", JSON.stringify(editData));
+  const saveProfile = async () => {
+  try {
+    await API.patch("me/", {
+      full_name: editData.full_name,
+      designation: editData.designation,
+      mobile_number: editData.mobile_number,
+    });
+
+    // 🔁 re-fetch updated data
+    const res = await API.get("me/");
+    setProfileData(res.data);
+    setEditData(res.data);
+
     setIsEditing(false);
-  };
+  } catch (err) {
+    console.error(err.response?.data);
+  }
+};
+
 
   const handleProfileChange = (e) => {
     setEditData({ ...editData, [e.target.name]: e.target.value });

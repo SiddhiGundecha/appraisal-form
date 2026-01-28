@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/CreateAccount.css";
-
+import API from "../api";
 export default function CreateAccount() {
   const navigate = useNavigate();
 
@@ -39,87 +39,73 @@ export default function CreateAccount() {
     setError("");
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
 
-    // 🔴 BASIC VALIDATION
-    if (
-      !form.name ||
-      !form.designation ||
-      !form.joiningDate ||
-      !form.address ||
-      !form.email ||
-      !form.mobile ||
-      !form.department
-    ) {
-      setError("Please fill all mandatory fields.");
-      return;
-    }
+  if (form.password !== form.confirmPassword) {
+    setPasswordMismatch(true);
+    return;
+  }
 
-    if (form.password !== form.confirmPassword) {
-      setPasswordMismatch(true);
-      return;
-    }
+  // ✅ BACKEND-EXPECTED ROLE VALUES
+  const role =
+    form.designation === "HOD"
+      ? "HOD"
+      : form.designation === "Principal"
+      ? "PRINCIPAL"
+      : form.designation === "Teaching Staff"
+      ? "FACULTY"
+      : form.designation === "Admin"
+      ? "ADMIN"
+      : "FACULTY"; // default to FACULTY
 
-    // ======================================================
-    // 🔥 IMPORTANT LOGIC: DESIGNATION → ROLE MAPPING
-    // This is REQUIRED for role-based login & dashboards
-    // (Frontend dummy logic – backend will do this later)
-    // ======================================================
-    const role =
-      form.designation === "HOD"
-        ? "hod"
-        : form.designation === "Principal"
-        ? "principal"
-        : form.designation === "Admin"
-        ? "admin"
-        : "faculty"; // Teaching Staff → faculty
-
-    // ======================================================
-    // 🔥 USER OBJECT STORED FOR LOGIN (DUMMY FRONTEND AUTH)
-    // This replaces backend + database for now
-    // ======================================================
-    const userForLogin = {
-      email: form.email,
-      password: form.password, // ❗ Dummy: never store plain password in real apps
-      role, // faculty / hod / principal / admin
-      department: form.department, // used for HOD filtering later
-    };
-
-    // ======================================================
-    // 🔥 SAVE MULTIPLE USERS (FACULTY / HOD / PRINCIPAL)
-    // ======================================================
-    const users = JSON.parse(localStorage.getItem("facultyUsers")) || [];
-
-    // ❌ Prevent duplicate email accounts
-    const emailExists = users.some((u) => u.email === form.email);
-    if (emailExists) {
-      setError("Account with this email already exists.");
-      return;
-    }
-
-    users.push(userForLogin); // ✅ ADD USER
-    localStorage.setItem("facultyUsers", JSON.stringify(users));
-
-    // ======================================================
-    // 🔥 SAVE FULL PROFILE DATA (FOR PROFILE PAGE)
-    // Dummy storage – later backend will handle this
-    // ======================================================
-    const { password, confirmPassword, ...profileOnlyData } = form;
-
-    localStorage.setItem(
-      "userProfile",
-      JSON.stringify({
-        ...profileOnlyData,
-        role, // needed to show role on profile page
-      })
-    );
-
-    // ======================================================
-    // 🔥 REDIRECT TO LOGIN
-    // ======================================================
-    navigate("/login");
+  // ✅ PAYLOAD MATCHES RegisterSerializer EXACTLY
+  const payload = {
+    email: form.email,                  // ✅ email (NOT username)
+    password: form.password,
+    role: role,                         // ✅ REQUIRED
+    full_name: form.name,               // ✅ REQUIRED
+    mobile: form.mobile,                // ✅ REQUIRED
+    date_of_joining: form.joiningDate,   // ✅ REQUIRED),
+    address: form.address, 
+    gradePay: form.gradePay,
+    promotion_designation: form.promotionDesignation,
+    eligibility_date: form.eligibilityDate,
+    assessment_period: form.assessmentPeriod,
   };
+
+  // 🔒 department rules enforced by backend
+  if (role !== "PRINCIPAL") {
+    payload.department = form.department;
+  }
+
+  // optional field
+  if (form.designation) {
+    payload.designation = form.designation;
+  }
+
+  try {
+    await API.post("register/", payload);
+    navigate("/login");
+  } catch (err) {
+      const data = err.response?.data;
+      console.error("REGISTER ERROR:", data);
+
+      if (data && typeof data === "object") {
+        const firstKey = Object.keys(data)[0];
+        const message = Array.isArray(data[firstKey])
+          ? data[firstKey][0]
+          : data[firstKey];
+
+        setError(message);
+      } else {
+        setError("Account creation failed.");
+      }
+    }
+
+};
+
 
   return (
     <div className="signup-container">
@@ -201,6 +187,7 @@ export default function CreateAccount() {
               <label>Assessment Period</label>
               <input
                 name="assessmentPeriod"
+                type="date"
                 placeholder="e.g. 2023–2024"
                 onChange={handleChange}
               />
