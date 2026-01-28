@@ -23,11 +23,16 @@ export default function Login() {
 
       // 🔥 Django JWT login
       const response = await API.post("token/", {
-        username: email,   // adjust if backend expects username
-        password: password,
-      });
+      username: email.trim(),   // email value is actually username
+      password: password,
+    });
 
       console.log("Token received");
+
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      sessionStorage.removeItem("access_token");
+      sessionStorage.removeItem("refresh_token");
 
       // 🔐 Save token
       if (remember) {
@@ -35,6 +40,7 @@ export default function Login() {
         localStorage.setItem("refresh_token", response.data.refresh);
       } else {
         sessionStorage.setItem("access_token", response.data.access);
+        sessionStorage.setItem("refresh_token", response.data.refresh);
       }
 
       // 🔥 Fetch user profile
