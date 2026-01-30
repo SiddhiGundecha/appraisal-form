@@ -1,40 +1,32 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import API from "../api";               // ✅ IMPORTANT
+import API from "../api";
 import "../styles/Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
 
-  const [role, setRole] = useState("faculty"); // UI only
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ ONE handleLogin ONLY
   const handleLogin = async (e) => {
-    console.log("LOGIN BUTTON CLICKED"); // 🧪 DEBUG LINE
     e.preventDefault();
     setError("");
 
     try {
-      console.log("Calling backend API");
-
-      // 🔥 Django JWT login
+      // 🔐 JWT Login
       const response = await API.post("token/", {
-      username: email.trim(),   // email value is actually username
-      password: password,
-    });
+        username: email.trim(), // backend treats this as username
+        password: password,
+      });
 
-      console.log("Token received");
+      // Clear any old tokens
+      localStorage.clear();
+      sessionStorage.clear();
 
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      sessionStorage.removeItem("access_token");
-      sessionStorage.removeItem("refresh_token");
-
-      // 🔐 Save token
+      // Store tokens
       if (remember) {
         localStorage.setItem("access_token", response.data.access);
         localStorage.setItem("refresh_token", response.data.refresh);
@@ -43,23 +35,28 @@ export default function Login() {
         sessionStorage.setItem("refresh_token", response.data.refresh);
       }
 
-      // 🔥 Fetch user profile
+      // 🔥 Fetch logged-in user profile
       const profileRes = await API.get("me/");
       const user = profileRes.data;
 
       localStorage.setItem("loggedInUser", JSON.stringify(user));
 
-      // 🔁 ROLE-BASED REDIRECT
-      if (user.role === "Admin") {
-        navigate("/admin/dashboard");
-      } else if (user.role === "FACULTY") {
-        navigate("/faculty/dashboard");
-      } else if (user.role === "HOD") {
-        navigate("/hod/dashboard");
-      } else if (user.role === "PRINCIPAL") {
-        navigate("/principal/dashboard");
-      } else {
-        setError("Unauthorized role");
+      // 🔁 Backend-controlled role routing
+      switch (user.role) {
+        case "Admin":
+          navigate("/admin/dashboard");
+          break;
+        case "FACULTY":
+          navigate("/faculty/dashboard");
+          break;
+        case "HOD":
+          navigate("/hod/dashboard");
+          break;
+        case "PRINCIPAL":
+          navigate("/principal/dashboard");
+          break;
+        default:
+          setError("Unauthorized role");
       }
 
     } catch (err) {
@@ -79,23 +76,6 @@ export default function Login() {
         {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleLogin} className="login-form">
-
-          {/* ROLE DROPDOWN (UI ONLY – NOT USED FOR AUTH) */}
-          <div className="form-group">
-            <label htmlFor="role">Role</label>
-            <select
-              id="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="form-control"
-            >
-              {/* 🔴 Dummy – actual role comes from stored user */}
-              <option value="admin">Admin</option>
-              <option value="faculty">Faculty</option>
-              <option value="hod">HOD</option>
-              <option value="principal">Principal</option>
-            </select>
-          </div>
 
           <div className="form-group">
             <label htmlFor="email">Official Email</label>
@@ -133,7 +113,6 @@ export default function Login() {
               <span>Remember me</span>
             </label>
 
-            {/* 🔴 Dummy – reset password flow later */}
             <button type="button" className="forgot-link">
               Forgot password?
             </button>

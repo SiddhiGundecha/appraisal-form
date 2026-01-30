@@ -68,22 +68,38 @@ export default function CreateAccount() {
     full_name: form.name,               // ✅ REQUIRED
     mobile: form.mobile,                // ✅ REQUIRED
     date_of_joining: form.joiningDate,   // ✅ REQUIRED),
-    address: form.address, 
-    gradePay: form.gradePay,
-    promotion_designation: form.promotionDesignation,
-    eligibility_date: form.eligibilityDate,
-    assessment_period: form.assessmentPeriod,
+    address: form.address,
   };
 
   // 🔒 department rules enforced by backend
-  if (role !== "PRINCIPAL") {
-    payload.department = form.department;
+  if (form.department && role !== "PRINCIPAL") {
+  payload.department = form.department;
   }
 
-  // optional field
   if (form.designation) {
     payload.designation = form.designation;
   }
+
+  if (form.address) {
+    payload.address = form.address;
+  }
+
+  if (form.gradePay) {
+    payload.gradePay = form.gradePay;
+  }
+
+  if (form.promotionDesignation) {
+    payload.promotion_designation = form.promotionDesignation;
+  }
+
+  if (form.eligibilityDate) {
+    payload.eligibility_date = form.eligibilityDate;
+  }
+
+  if (form.assessmentPeriod) {
+    payload.assessment_period = form.assessmentPeriod;
+  }
+
 
   try {
     await API.post("register/", payload);

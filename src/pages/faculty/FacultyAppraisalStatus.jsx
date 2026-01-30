@@ -89,7 +89,8 @@ export default function FacultyAppraisalStatus() {
           approved: data.approved || [],
           changesRequested: data.changes_requested || [],
         });
-      } catch (err) {
+      } catch
+      {
         setError("Unable to load appraisal status");
       } finally {
         setLoading(false);

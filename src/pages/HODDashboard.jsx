@@ -1,6 +1,7 @@
 // HODDashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../api";
 import "../styles/HODDashboard.css";
 
 export default function HODDashboard() {
@@ -17,31 +18,66 @@ export default function HODDashboard() {
     submissionDate: null,
   });
 
-  /* ================= FACULTY SUBMISSIONS ================= */
+  /* ================= FACULTY SUBMISSIONS (API) ================= */
   const [submissions, setSubmissions] = useState({
-    pending: [
-      {
-        id: 1,
-        facultyName: "Dr. Rajesh Kumar",
-        department: "Computer Science",
-        designation: "Associate Professor",
-        academicYear: "2024-25",
-      },
-    ],
+    pending: [],
     processed: [],
   });
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  /* ================= LOAD HOD SELF APPRAISAL ================= */
   useEffect(() => {
     const stored = localStorage.getItem("hodOwnAppraisal");
     if (stored) setHodOwnAppraisal(JSON.parse(stored));
   }, []);
 
-  /* ================= NAVIGATION ================= */
+  /* ================= FETCH APPRAISALS FOR HOD ================= */
+  useEffect(() => {
+    const fetchAppraisals = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const res = await API.get("hod/appraisals/");
+        const data = res.data || [];
+
+        const pending = data.filter(
+          (a) => a.status === "SUBMITTED"
+        );
+
+        const processed = data.filter(
+          (a) =>
+            a.status === "HOD_APPROVED" ||
+            a.status === "CHANGES_REQUESTED"
+        );
+
+        setSubmissions({ pending, processed });
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load appraisals");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAppraisals();
+  }, []);
+
+  /* ================= AUTH ================= */
+  const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate("/login");
+  };
+
+  /* ================= HOD SELF APPRAISAL ================= */
   const handleFillOwnAppraisal = () => {
     const updated = { ...hodOwnAppraisal, status: "in_progress" };
     setHodOwnAppraisal(updated);
     localStorage.setItem("hodOwnAppraisal", JSON.stringify(updated));
-    navigate("/hod/appraisal-form"); // SAME FORM AS FACULTY
+    navigate("/hod/appraisal-form");
   };
 
   const handleSubmitOwnAppraisal = () => {
@@ -54,11 +90,12 @@ export default function HODDashboard() {
     localStorage.setItem("hodOwnAppraisal", JSON.stringify(updated));
   };
 
-  /* ================= FACULTY REVIEW ================= */
+  /* ================= FACULTY REVIEW (LOCAL STATE ONLY) ================= */
+  // TODO: Replace with API calls
   const handleApprove = () => {
     const updated = {
       ...selectedSubmission,
-      status: "approved",
+      status: "HOD_APPROVED",
       hodRemarks: remarks,
     };
 
@@ -76,7 +113,7 @@ export default function HODDashboard() {
 
     const updated = {
       ...selectedSubmission,
-      status: "changes_requested",
+      status: "CHANGES_REQUESTED",
       hodRemarks: remarks,
     };
 
@@ -101,14 +138,13 @@ export default function HODDashboard() {
           <h2>Faculty Submission Review</h2>
 
           <div className="info-grid">
-            <div><b>Name:</b> {selectedSubmission.facultyName}</div>
-            <div><b>Department:</b> {selectedSubmission.department}</div>
+            <div><b>Name:</b> {selectedSubmission.faculty_name}</div>
+            <div><b>Department:</b> {selectedSubmission.department || "—"}</div>
             <div><b>Designation:</b> {selectedSubmission.designation}</div>
-            <div><b>Academic Year:</b> {selectedSubmission.academicYear}</div>
+            <div><b>Academic Year:</b> {selectedSubmission.academic_year}</div>
           </div>
 
           <h3>View Appraisal Forms</h3>
-
           <div className="view-forms-row">
             <button className="view-form-btn">View SPPU Form</button>
             <button className="view-form-btn">View PBAS Form</button>
@@ -142,7 +178,7 @@ export default function HODDashboard() {
           <h1>HOD Dashboard</h1>
           <p className="subtitle">Faculty Review & Self Appraisal</p>
         </div>
-        <button className="logout-btn" onClick={() => navigate("/login")}>
+        <button className="logout-btn" onClick={handleLogout}>
           Logout
         </button>
       </div>
@@ -174,28 +210,59 @@ export default function HODDashboard() {
       </div>
 
       <div className="tab-row">
-        <button className={activeTab === "pending" ? "tab active" : "tab"}
-          onClick={() => setActiveTab("pending")}>
+        <button
+          className={activeTab === "pending" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("pending")}
+        >
           Pending
         </button>
-        <button className={activeTab === "processed" ? "tab active" : "tab"}
-          onClick={() => setActiveTab("processed")}>
+        <button
+          className={activeTab === "processed" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("processed")}
+        >
           Processed
         </button>
       </div>
 
       {activeTab === "pending" && (
         <div className="list">
+          {loading && <p>Loading appraisals...</p>}
+          {error && <p className="error">{error}</p>}
+
+          {!loading && submissions.pending.length === 0 && (
+            <p>No pending appraisals.</p>
+          )}
+
           {submissions.pending.map((sub) => (
             <div className="list-card" key={sub.id}>
               <div>
-                <h3>{sub.facultyName}</h3>
-                <p>{sub.department} | {sub.academicYear}</p>
+                <h3>{sub.faculty_name}</h3>
+                <p>{sub.department || "—"} | {sub.academic_year}</p>
               </div>
-              <button className="primary-btn"
-                onClick={() => setSelectedSubmission(sub)}>
+              <button
+                className="primary-btn"
+                onClick={() => setSelectedSubmission(sub)}
+              >
                 👁 View
               </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "processed" && (
+        <div className="list">
+          {submissions.processed.length === 0 && (
+            <p>No processed appraisals.</p>
+          )}
+
+          {submissions.processed.map((sub) => (
+            <div className="list-card" key={sub.id}>
+              <div>
+                <h3>{sub.faculty_name}</h3>
+                <p>{sub.department || "—"} | {sub.academic_year}</p>
+                <p><b>Status:</b> {sub.status}</p>
+              </div>
             </div>
           ))}
         </div>
