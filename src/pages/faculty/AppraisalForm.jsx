@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import API from "../../api";
 import "../../styles/AppraisalForm.css";
-import API from "../../api";
+
 
 
 
@@ -904,27 +904,22 @@ const buildAppraisalPayload = () => {
   );
 
   return {
-    // ===== META =====
     academic_year: generalInfo.academicYear,
     semester: "SEM_1",
     form_type: "FACULTY",
 
-    // ===== APPRAISAL DATA =====
     appraisal_data: {
-      // ---------- GENERAL ----------
+      submit_action: "SUBMIT",
+
       general: {
         faculty_name: generalInfo.facultyName,
         designation: generalInfo.designation,
         department: generalInfo.department
       },
 
-      submit_action: "SUBMIT",
-
-      // ---------- TEACHING ----------
       teaching: {
         total_classes_assigned: totalAssigned,
         classes_taught: totalTaught,
-
         courses: teachingActivities.map(t => ({
           course_code: t.courseCode,
           total_classes_assigned: Number(t.totalClassesAssigned),
@@ -932,17 +927,54 @@ const buildAppraisalPayload = () => {
         }))
       },
 
-      // ---------- ACTIVITIES (BOOLEAN FLAGS ONLY) ----------
       activities: {
         departmental: departmentalActivities.length > 0,
         institute: instituteActivities.length > 0,
         society: societyActivities.length > 0
       },
 
-      // ---------- RESEARCH ----------
       research: {
-      entries: buildResearchEntries()
-    },
+        entries: buildResearchEntries()
+      },
+
+      // ✅ PBAS BLOCK
+      pbas: {
+        ...buildPBASScores(),
+        ...buildPBASCounts(),
+
+        student_feedback: studentFeedback.map(f => ({
+          feedback_score: Number(f.averageScore)
+        })),
+
+        departmental_activities: departmentalActivities.map(a => ({
+          semester: a.semester,
+          activity: a.activity,
+          credits_claimed: Number(a.credit),
+          enclosure_no: a.enclosureNo || null
+        })),
+
+        institute_activities: instituteActivities.map(a => ({
+          semester: a.semester,
+          activity: a.activity,
+          credits_claimed: Number(a.credit),
+          enclosure_no: a.enclosureNo || null
+        })),
+
+        society_activities: societyActivities.map(a => ({
+          semester: a.semester,
+          activity: a.activity,
+          credits_claimed: Number(a.credit),
+          enclosure_no: a.enclosureNo || null
+        }))
+      },
+
+      acr: {
+        grade: acrDetails.acrAvailable === "Yes" ? "A" : "C"
+      }
+    }
+  };
+};
+
 
 
 const buildPBASCounts = () => {
@@ -951,8 +983,7 @@ const buildPBASCounts = () => {
       journal_papers: research.papers.filter(
         p => p.ugcCare === "Yes"
       ).length,
-
-      conference_papers: 0, // if you have a conference section later
+      conference_papers: 0
     },
 
     publications: {
@@ -962,7 +993,7 @@ const buildPBASCounts = () => {
 
       book_international: research.publications.filter(
         p => p.type === "Book" && p.publisherType === "International"
-      ).length,
+      ).length
     },
 
     ict: {
@@ -1002,98 +1033,44 @@ const buildPBASCounts = () => {
   };
 };
 
-
-<<<<<<< HEAD
-      // ---------- PBAS (ALL ACTIVITY LISTS LIVE HERE) ----------
-      pbas: {
-  ...buildPBASScores(),
-
-  student_feedback: studentFeedback.map(f => ({
-    feedback_score: Number(f.averageScore)
-  })),
-
-  departmental_activities: departmentalActivities.map(a => ({
-    semester: a.semester,
-    activity: a.activity,
-    credits_claimed: Number(a.credit),
-    enclosure_no: a.enclosureNo || null,
-    other_activity: a.otherActivity || null
-  })),
-
-  institute_activities: instituteActivities.map(a => ({
-    semester: a.semester,
-    activity: a.activity,
-    credits_claimed: Number(a.credit),
-    enclosure_no: a.enclosureNo || null,
-    other_activity: a.otherActivity || null
-  })),
-
-  society_activities: societyActivities.map(a => ({
-    semester: a.semester,
-    activity: a.activity,
-    credits_claimed: Number(a.credit),
-    enclosure_no: a.enclosureNo || null,
-    other_activity: a.otherActivity || null
-  }))
-},
-
-      // ---------- ACR ----------
-      acr: {
-        grade: acrDetails.acrAvailable === "Yes" ? "A" : "C"
-      }
-    }
-  };
-};
-
-
-
-
+    
 const handleSubmitForm = async () => {
-=======
-  const handleSubmitForm = async () => {
->>>>>>> 93c704f0ac65ce40601163a1f2e3afe76645f399
+  // 1️⃣ Declaration check
   if (!declarationAccepted) {
     alert("Please accept the declaration.");
     return;
   }
 
-  if (!window.confirm("Once submitted, the form cannot be edited. Continue?")) {
-    return;
-  }
+  // 2️⃣ Final confirmation
+  const confirmed = window.confirm(
+    "Once submitted, the form cannot be edited. Continue?"
+  );
+  if (!confirmed) return;
 
   try {
-<<<<<<< HEAD
+    // 3️⃣ Build payload (ONLY ONCE)
     const payload = buildAppraisalPayload();
+    console.log("✅ FINAL SUBMIT PAYLOAD", payload);
 
+    // 4️⃣ API call
     await API.post("/faculty/submit/", payload);
 
+    // 5️⃣ Post-submit actions
     setFormStatus("submitted");
     localStorage.removeItem("facultyDraft");
 
     alert("Appraisal submitted and sent to HOD for review.");
     navigate("/faculty/dashboard");
 
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    // 6️⃣ Proper error handling
+    console.error("❌ SUBMISSION ERROR");
+    console.error("Status:", error.response?.status);
+    console.error("Response:", error.response?.data);
+    console.error("Full error:", error);
+
     alert("Submission failed. Please try again.");
   }
-};
-=======
-    const payload = buildBackendPayload("submit");
-    console.log("SUBMIT PAYLOAD", payload);
-
-    await API.post("faculty/submit/", payload);
-
-    setFormStatus("submitted");
-    alert("Form submitted successfully and sent to HoD for review.");
-    navigate("/faculty/dashboard");
-  }catch (error) {
-  console.error("❌ SUBMISSION ERROR");
-  console.error("Status:", error.response?.status);
-  console.error("Response data:", error.response?.data);
-  console.error("Full error:", error);
-  alert("Submission failed — check console");
-}
 };
 
 const handleFinalSubmit = () => {
@@ -1106,7 +1083,7 @@ const handleFinalSubmit = () => {
   navigate("/faculty/dashboard")
 };
 
->>>>>>> 93c704f0ac65ce40601163a1f2e3afe76645f399
+
 
   
 // ================= DEPARTMENTAL ACTIVITIES HANDLERS =================
