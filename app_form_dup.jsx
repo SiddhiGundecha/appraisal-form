@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import API from "../../api";
+import { useNavigate } from "react-router-dom";
 import "../../styles/AppraisalForm.css";
 import API from "../../api";
 
-
-
 export default function FacultyAppraisalForm() {
- 
-  const location = useLocation();   // new added
-
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState({});
@@ -25,10 +19,9 @@ const [studentFeedback, setStudentFeedback] = useState([
     courseCode: "",
     courseName: "",
     averageScore: "",
-    enclosureNo: "" 
+    enclosureNo: ""
   }
 ]);
-
 
 
 const [sppuInvolvement, setSppuInvolvement] = useState({
@@ -40,56 +33,23 @@ const [sppuInvolvement, setSppuInvolvement] = useState({
   researchProject: "",
   publication: ""
 });
-//new added
 const [departmentalActivities, setDepartmentalActivities] = useState([
-  {
-    semester: "",
-    activity: "",
-    credit: "",  
-    criteria: "",
-    enclosureNo: "",
-    otherActivity: ""
-  }
+  { semester: "", activity: "", enclosureNo: "" }
 ]);
-
-//new added
-
-
 
 const [instituteActivities, setInstituteActivities] = useState([
-  {
-    semester: "",
-    activity: "",
-    credit: "",
-    criteria: "",
-    enclosureNo: "",
-    otherActivity: ""
-  }
+  { semester: "", activity: "", enclosureNo: "" }
 ]);
-
-
-
-
 
 const [acrDetails, setAcrDetails] = useState({
   year: "",
   acrAvailable: "",
-  enclosureNo: "",
-  creditPoints: ""   // new added
+  enclosureNo: ""
 });
 
-
 const [societyActivities, setSocietyActivities] = useState([
-  {
-    activity: "",
-    semester: "",
-    credit: "",
-    criteria: "",
-    enclosureNo: "",
-    otherActivity: ""
-  }
+  { activity: "", semester: "", enclosureNo: "" }
 ]);
-
 
 
 const handleArrayChange = (setter, index, e) => {
@@ -115,68 +75,46 @@ const addRow = (setter, row) => setter(prev => [...prev, row]);
 
 const removeRow = (setter, index) =>
   setter(prev => prev.filter((_, i) => i !== index));
-//new added all three 
- const DEPARTMENTAL_ACTIVITIES = [
-  "Lab In charge",
+
+const DEPARTMENTAL_ACTIVITIES = [
+  "Lab In-charge",
   "Consultancy",
-  "Time table In charge",
-  "NBA coordinator",
+  "Time Table In-charge",
+  "NBA Coordinator",
   "Class Teacher",
-  "Student registration",
-  "Student detention In charge",
-  "Final Year Student Project Guide",
+  "Student Registration In-charge",
+  "Student Detention In-charge",
+  "Final Year Project Guide",
   "Guest Lecture Organization",
-  "Industrial visit in charge",
+  "Industrial Visit In-charge",
   "Project / Seminar Coordinator",
-  "Departmental Library In charge",
-  "Student Association / Chapter Co-coordinator",
-  "Cleanliness in charge",
-  "Practical / Exam Time table in charge",
-  "Departmental store / Purchase in charge",
-  "Internal / External Academic Monitoring Co-coordinator",
-  "Department Level CSR Activities Co-coordinator",
-  "Project Mentoring for project Competition",
-  "Student Feedback In charge",
+  "Departmental Library In-charge",
+  "Student Association / Chapter Coordinator",
+  "Cleanliness In-charge",
+  "Practical / Exam Timetable In-charge",
+  "Departmental Store / Purchase In-charge",
+  "Internal / External Academic Monitoring Coordinator",
+  "Department Level CSR Activities Coordinator",
+  "Project Mentoring for Competition",
+  "Student Feedback In-charge",
   "Student Counseling",
-  "Initiative for CEP / STTP / Testing Consultancy",
-  "Organization of MOOCS / NPTEL / Spoken Tutorials / IUCEE",
-  "Any other Activity"
+  "CEP / STTP / Testing Consultancy Initiative",
+  "MOOCs / NPTEL / Spoken Tutorials / IUCEE Organization",
+  "Other (Specify)"
+];
+const INSTITUTE_ACTIVITIES = [
+  "HoD / Dean",
+  "Coordinator appointed by Head of Institute",
+  "Organized Conference",
+  "FDP / Conference"
 ];
 
- const INSTITUTE_ACTIVITIES = [
-  "In charge Internship",
-  "Institute Web site Management",
-  "Institute level networking and maintenance",
-  "Building / Electrical Maintenance",
-  "EPBX Activity",
-  "Hardware and Software installation and maintenance",
-  "Institute MIS In charge",
-  "DTE MIS In charge",
-  "Organization of FDP / Conference / Training / Workshop",
-  "Exam Activities / Duties",
-  "RO / RBTE / Administrative Activity / Duties",
-  "Sports in charge and coordinator",
-  "AICTE / University / Statutory committee member",
-  "NBA / NAAC coordinator",
-  "Garden Maintenance / Tree Plantation",
-  "AICTE / NIRF / ARIIA / AISHE / TEQIP Activity in-charge",
-  "PRO / Gymkhana / Student club activity",
-  "HoD / Dean / Associate Dean / Library In-charge",
-  "Rector / Warden / Canteen",
-  "Earn and Learn Scheme / Scholarship In-charge",
-  "Any other Activity"
-];
 
- const SOCIETY_ACTIVITIES = [
-  "Blood Donation Activity organization",
+const SOCIETY_ACTIVITIES = [
+  "Blood Donation Camp",
   "Yoga Classes",
-  "Induction Program In charge",
-  "Medical / Health Camp Organization",
-  "Literacy Camp Organization",
-  "Tree Plantation and garden maintenance",
-  "Environmental awareness camp",
-  "Swachh Bharat / Unnat Bharat / NSS / NCC Activity",
-  "Any other Activity"
+  "Induction Program",
+  "Unnat Bharat Abhiyan"
 ];
 
 
@@ -221,7 +159,7 @@ const [research, setResearch] = useState({
     }
   ],
 
-  // THIS WAS MISSING
+  // 🔥 THIS WAS MISSING
   guidance: [
     {
       degree: "",
@@ -608,7 +546,6 @@ const removeTeachingRow = (index) => {
 };
 
 
-
  const handleSaveDraft = async () => {
   try {
     const payload = buildBackendPayload("draft");
@@ -738,211 +675,6 @@ const validateSPPU = () => {
   return Object.keys(newErrors).length === 0;
 };
 
-const buildResearchEntries = () => {
-  const counts = {};
-
-  // Research Papers
-  const journalPapers = research.papers.filter(p => p.title).length;
-  if (journalPapers > 0) counts.journal_papers = journalPapers;
-
-  // Publications
-  research.publications.forEach(p => {
-    if (!p.type || !p.publisherType) return;
-
-    if (p.type === "Book" && p.publisherType === "International") {
-      counts.book_international = (counts.book_international || 0) + 1;
-    }
-    if (p.type === "Book" && p.publisherType === "National") {
-      counts.book_national = (counts.book_national || 0) + 1;
-    }
-    if (p.type === "Chapter") {
-      counts.edited_book_chapter = (counts.edited_book_chapter || 0) + 1;
-    }
-  });
-
-  // Research Projects
-  research.projects.forEach(p => {
-    if (p.status === "Completed" && p.amountSlab === ">10L") {
-      counts.project_completed_gt_10_lakhs =
-        (counts.project_completed_gt_10_lakhs || 0) + 1;
-    }
-    if (p.status === "Completed" && p.amountSlab === "<10L") {
-      counts.project_completed_lt_10_lakhs =
-        (counts.project_completed_lt_10_lakhs || 0) + 1;
-    }
-  });
-
-  // Research Guidance
-  research.guidance.forEach(g => {
-    if (g.degree === "PhD" && g.status === "Awarded") {
-      counts.phd_awarded =
-        (counts.phd_awarded || 0) + Number(g.count || 0);
-    }
-    if (g.degree === "PG" && g.status === "Submitted") {
-      counts.pg_dissertation_awarded =
-        (counts.pg_dissertation_awarded || 0) + Number(g.count || 0);
-    }
-  });
-
-  // MOOCs
-  research.moocsIct.forEach(m => {
-    if (Number(m.creditClaimed) > 0) {
-      counts.mooc_complete_4_quadrant =
-        (counts.mooc_complete_4_quadrant || 0) + 1;
-    }
-  });
-
-  // Consultancy
-  research.consultancyPolicy.forEach(c => {
-    if (c.category === "Consultancy") {
-      counts.consultancy = (counts.consultancy || 0) + 1;
-    }
-  });
-
-  // Awards
-  research.awards.forEach(a => {
-    if (a.level === "International") {
-      counts.award_international = (counts.award_international || 0) + 1;
-    }
-    if (a.level === "National") {
-      counts.award_national = (counts.award_national || 0) + 1;
-    }
-  });
-
-  // Invited Talks
-  research.invitedTalks.forEach(t => {
-    if (t.level === "International Abroad") {
-      counts.invited_lecture_international_abroad =
-        (counts.invited_lecture_international_abroad || 0) + 1;
-    }
-    if (t.level === "National") {
-      counts.invited_lecture_national =
-        (counts.invited_lecture_national || 0) + 1;
-    }
-  });
-
-  return Object.entries(counts).map(([type, count]) => ({
-    type,
-    count
-  }));
-};
-
-
-const buildPBASScores = () => {
-  const totalAssigned = teachingActivities.reduce(
-    (s, t) => s + Number(t.totalClassesAssigned || 0),
-    0
-  );
-
-  const totalConducted = teachingActivities.reduce(
-    (s, t) => s + Number(t.classesConducted || 0),
-    0
-  );
-
-  const teaching_process =
-    totalAssigned > 0
-      ? Math.min(
-          Math.round((totalConducted / totalAssigned) * 25),
-          25
-        )
-      : 0;
-
-  const feedback = Math.min(
-    studentFeedback.reduce(
-      (s, f) => s + Number(f.averageScore || 0),
-      0
-    ),
-    25
-  );
-
-  const department = Math.min(
-    departmentalActivities.reduce(
-      (s, a) => s + Number(a.credit || 0),
-      0
-    ),
-    20
-  );
-
-  const institute = Math.min(
-    instituteActivities.reduce(
-      (s, a) => s + Number(a.credit || 0),
-      0
-    ),
-    10
-  );
-
-  const society = Math.min(
-    societyActivities.reduce(
-      (s, a) => s + Number(a.credit || 0),
-      0
-    ),
-    10
-  );
-
-  const acr = acrDetails.acrAvailable === "Yes" ? 10 : 0;
-
-  return {
-    teaching_process,
-    feedback,
-    department,
-    institute,
-    society,
-    acr
-  };
-};
-
-
-const buildAppraisalPayload = () => {
-  const totalAssigned = teachingActivities.reduce(
-    (sum, t) => sum + Number(t.totalClassesAssigned),
-    0
-  );
-
-  const totalTaught = teachingActivities.reduce(
-    (sum, t) => sum + Number(t.classesConducted),
-    0
-  );
-
-  return {
-    // ===== META =====
-    academic_year: generalInfo.academicYear,
-    semester: "SEM_1",
-    form_type: "FACULTY",
-
-    // ===== APPRAISAL DATA =====
-    appraisal_data: {
-      // ---------- GENERAL ----------
-      general: {
-        faculty_name: generalInfo.facultyName,
-        designation: generalInfo.designation,
-        department: generalInfo.department
-      },
-
-      submit_action: "SUBMIT",
-
-      // ---------- TEACHING ----------
-      teaching: {
-        total_classes_assigned: totalAssigned,
-        classes_taught: totalTaught,
-
-        courses: teachingActivities.map(t => ({
-          course_code: t.courseCode,
-          total_classes_assigned: Number(t.totalClassesAssigned),
-          classes_taught: Number(t.classesConducted)
-        }))
-      },
-
-      // ---------- ACTIVITIES (BOOLEAN FLAGS ONLY) ----------
-      activities: {
-        departmental: departmentalActivities.length > 0,
-        institute: instituteActivities.length > 0,
-        society: societyActivities.length > 0
-      },
-
-      // ---------- RESEARCH ----------
-      research: {
-      entries: buildResearchEntries()
-    },
 
 
 const buildPBASCounts = () => {
@@ -1003,55 +735,7 @@ const buildPBASCounts = () => {
 };
 
 
-<<<<<<< HEAD
-      // ---------- PBAS (ALL ACTIVITY LISTS LIVE HERE) ----------
-      pbas: {
-  ...buildPBASScores(),
-
-  student_feedback: studentFeedback.map(f => ({
-    feedback_score: Number(f.averageScore)
-  })),
-
-  departmental_activities: departmentalActivities.map(a => ({
-    semester: a.semester,
-    activity: a.activity,
-    credits_claimed: Number(a.credit),
-    enclosure_no: a.enclosureNo || null,
-    other_activity: a.otherActivity || null
-  })),
-
-  institute_activities: instituteActivities.map(a => ({
-    semester: a.semester,
-    activity: a.activity,
-    credits_claimed: Number(a.credit),
-    enclosure_no: a.enclosureNo || null,
-    other_activity: a.otherActivity || null
-  })),
-
-  society_activities: societyActivities.map(a => ({
-    semester: a.semester,
-    activity: a.activity,
-    credits_claimed: Number(a.credit),
-    enclosure_no: a.enclosureNo || null,
-    other_activity: a.otherActivity || null
-  }))
-},
-
-      // ---------- ACR ----------
-      acr: {
-        grade: acrDetails.acrAvailable === "Yes" ? "A" : "C"
-      }
-    }
-  };
-};
-
-
-
-
-const handleSubmitForm = async () => {
-=======
   const handleSubmitForm = async () => {
->>>>>>> 93c704f0ac65ce40601163a1f2e3afe76645f399
   if (!declarationAccepted) {
     alert("Please accept the declaration.");
     return;
@@ -1062,23 +746,6 @@ const handleSubmitForm = async () => {
   }
 
   try {
-<<<<<<< HEAD
-    const payload = buildAppraisalPayload();
-
-    await API.post("/faculty/submit/", payload);
-
-    setFormStatus("submitted");
-    localStorage.removeItem("facultyDraft");
-
-    alert("Appraisal submitted and sent to HOD for review.");
-    navigate("/faculty/dashboard");
-
-  } catch (err) {
-    console.error(err);
-    alert("Submission failed. Please try again.");
-  }
-};
-=======
     const payload = buildBackendPayload("submit");
     console.log("SUBMIT PAYLOAD", payload);
 
@@ -1106,7 +773,6 @@ const handleFinalSubmit = () => {
   navigate("/faculty/dashboard")
 };
 
->>>>>>> 93c704f0ac65ce40601163a1f2e3afe76645f399
 
   
 // ================= DEPARTMENTAL ACTIVITIES HANDLERS =================
@@ -1118,20 +784,17 @@ const handleDeptChange = (index, field, value) => {
     return copy;
   });
 };
+
 const addDeptRow = () => {
   setDepartmentalActivities(prev => [
     ...prev,
     {
-      semester: "",
       activity: "",
-      credit: "",
-      criteria: "",
-      enclosureNo: "",
-      otherActivity: ""
+      customActivity: "",
+      semester: "",
+      creditsClaimed: ""
     }
   ]);
-
-
 };
 
 const removeDeptRow = (index) => {
@@ -1665,42 +1328,31 @@ const handleAcrChange = (e) => {
 >
   <h4>A. ACR Details</h4>
 
- <div className="activity-card">
-        <div className="activity-row">
-          <input
-            name="year"
-            placeholder="ACR Year (e.g. 2024-25)"
-            value={acrDetails.year}
-            onChange={handleAcrChange}
-          />
+<div className="activity-card">
+  <div className="activity-row">
+    <input
+      name="year"
+      placeholder="ACR Year (e.g. 2024-25)"
+      value={acrDetails.year}
+      onChange={handleAcrChange}
+    />
 
-          <select
-            name="acrAvailable"
-            value={acrDetails.acrAvailable}
-            onChange={handleAcrChange}
-          >
-            <option value="">Is ACR Available?</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-          </select>
+    <select
+      name="acrAvailable"
+      value={acrDetails.acrAvailable}
+      onChange={handleAcrChange}
+    >
+      <option value="">Is ACR Available?</option>
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
 
-          <input
-            name="enclosureNo"
-            placeholder="Enclosure No."
-            value={acrDetails.enclosureNo}
-            onChange={handleAcrChange}
-          />
-{/*new added */}
-          {/*  Credit Points Input */}
-
-          <input
-            type="number"
-            name="creditPoints"
-            placeholder="Credit Points"
-            value={acrDetails.creditPoints}
-            onChange={handleAcrChange}
-            min="0"
-          />
+    <input
+      name="enclosureNo"
+      placeholder="Enclosure No."
+      value={acrDetails.enclosureNo}
+      onChange={handleAcrChange}
+    />
   </div>
 </div>
 
@@ -1785,13 +1437,13 @@ const handleAcrChange = (e) => {
   + Add Student Feedback Entry
 </button>
 <hr/>
-{/*new added */}
 <h4>C. Departmental Activities (Max Credit 20)</h4>
 
 {departmentalActivities.map((row, index) => (
   <div className="activity-card" key={index}>
-    <div className="activity-row">
 
+    {/* ROW 1 */}
+    <div className="activity-row">
       <input
         placeholder="Semester"
         value={row.semester}
@@ -1813,22 +1465,19 @@ const handleAcrChange = (e) => {
       </select>
 
       <input
-      type="number"
-        placeholder="Credit Point"
-        value={row.credit}
+        type="number"
+        placeholder="Credit (0–3)"
+        min="0"
+        max="3"
+        value={row.creditsClaimed}
         onChange={(e) =>
-          handleDeptChange(index, "credit", e.target.value)
+          handleDeptChange(index, "creditsClaimed", e.target.value)
         }
       />
+    </div>
 
-      <input
-        placeholder="Criteria (e.g. 3 Point / semester)"
-        value={row.criteria}
-        onChange={(e) =>
-          handleDeptChange(index, "criteria", e.target.value)
-        }
-      />
-
+    {/* ROW 2 */}
+    <div className="activity-row">
       <input
         placeholder="Enclosure No."
         value={row.enclosureNo}
@@ -1836,6 +1485,8 @@ const handleAcrChange = (e) => {
           handleDeptChange(index, "enclosureNo", e.target.value)
         }
       />
+
+      <div />
 
       {departmentalActivities.length > 1 && (
         <button
@@ -1848,40 +1499,23 @@ const handleAcrChange = (e) => {
       )}
     </div>
 
-    {row.activity === "Any other Activity" && (
-      <div className="activity-row">
-        <input
-          placeholder="Specify other departmental activity"
-          value={row.otherActivity}
-          onChange={(e) =>
-            handleDeptChange(index, "otherActivity", e.target.value)
-          }
-        />
-      </div>
-    )}
   </div>
 ))}
 
-<button
-  type="button"
-  className="btn-outline"
-  onClick={addDeptRow}
->
+<button type="button" className="btn-outline" onClick={addDeptRow}>
   + Add Departmental Activity
 </button>
 
 
-
-
+<hr />
 
 <hr />
-{/*new added */}
 <h4>D. Institute Activities (Max Credit 10)</h4>
 
 {instituteActivities.map((row, index) => (
   <div className="activity-card" key={index}>
-    <div className="activity-row">
 
+    <div className="activity-row">
       <input
         name="semester"
         placeholder="Semester"
@@ -1899,29 +1533,13 @@ const handleAcrChange = (e) => {
         }
       >
         <option value="">Select Activity</option>
-        {INSTITUTE_ACTIVITIES.map((act, i) => (
-          <option key={i} value={act}>{act}</option>
-        ))}
+        <option value="HoD / Dean">HoD / Dean</option>
+        <option value="Coordinator appointed by Head of Institute">
+          Coordinator appointed by Head of Institute
+        </option>
+        <option value="Organized Conference">Organized Conference</option>
+        <option value="FDP / Conference">FDP / Conference</option>
       </select>
-
-      <input
-      type="number"
-        name="credit"
-        placeholder="Credit Point"
-        value={row.credit}
-        onChange={(e) =>
-          handleArrayChange(setInstituteActivities, index, e)
-        }
-      />
-
-      <input
-        name="criteria"
-        placeholder="Criteria"
-        value={row.criteria}
-        onChange={(e) =>
-          handleArrayChange(setInstituteActivities, index, e)
-        }
-      />
 
       <input
         name="enclosureNo"
@@ -1931,8 +1549,12 @@ const handleAcrChange = (e) => {
           handleArrayChange(setInstituteActivities, index, e)
         }
       />
+    </div>
 
-      {instituteActivities.length > 1 && (
+    {instituteActivities.length > 1 && (
+      <div className="activity-row">
+        <div />
+        <div />
         <button
           type="button"
           className="btn-remove"
@@ -1942,108 +1564,9 @@ const handleAcrChange = (e) => {
         >
           ✕
         </button>
-      )}
-    </div>
-
-    {row.activity === "Any other Activity" && (
-      <div className="activity-row">
-        <input
-          name="otherActivity"
-          placeholder="Specify other institute activity"
-          value={row.otherActivity}
-          onChange={(e) =>
-            handleArrayChange(setInstituteActivities, index, e)
-          }
-        />
       </div>
     )}
-  </div>
-))}
 
-<hr />
-{/*new added */}
-
-    {/* ================= STEP 3C: CONTRIBUTION TO SOCIETY ================= */}
-   <h4>E. Contribution to Society (Max Credit 10)</h4>
-
-{societyActivities.map((row, index) => (
-  <div className="activity-card" key={index}>
-    <div className="activity-row">
-
-      <select
-        name="activity"
-        value={row.activity}
-        onChange={(e) =>
-          handleArrayChange(setSocietyActivities, index, e)
-        }
-      >
-        <option value="">Select Activity</option>
-        {SOCIETY_ACTIVITIES.map((act, i) => (
-          <option key={i} value={act}>{act}</option>
-        ))}
-      </select>
-
-      <input
-        name="semester"
-        placeholder="Semester / Year"
-        value={row.semester}
-        onChange={(e) =>
-          handleArrayChange(setSocietyActivities, index, e)
-        }
-      />
-
-      <input
-        name="credit"
-        placeholder="Credit Point"
-        value={row.credit}
-        onChange={(e) =>
-          handleArrayChange(setSocietyActivities, index, e)
-        }
-      />
-
-      <input
-        name="criteria"
-        placeholder="Criteria (e.g. 5 Point / event)"
-        value={row.criteria}
-        onChange={(e) =>
-          handleArrayChange(setSocietyActivities, index, e)
-        }
-      />
-
-      <input
-        name="enclosureNo"
-        placeholder="Enclosure No."
-        value={row.enclosureNo}
-        onChange={(e) =>
-          handleArrayChange(setSocietyActivities, index, e)
-        }
-      />
-
-      {societyActivities.length > 1 && (
-        <button
-          type="button"
-          className="btn-remove"
-          onClick={() =>
-            removeRow(setSocietyActivities, index)
-          }
-        >
-          ✕
-        </button>
-      )}
-    </div>
-
-    {row.activity === "Any other Activity" && (
-      <div className="activity-row">
-        <input
-          name="otherActivity"
-          placeholder="Specify other social activity"
-          value={row.otherActivity}
-          onChange={(e) =>
-            handleArrayChange(setSocietyActivities, index, e)
-          }
-        />
-      </div>
-    )}
   </div>
 ))}
 
@@ -2051,21 +1574,90 @@ const handleAcrChange = (e) => {
   type="button"
   className="btn-outline"
   onClick={() =>
-    addRow(setSocietyActivities, {
-      activity: "",
+    addRow(setInstituteActivities, {
       semester: "",
-      credit: "",
-      criteria: "",
-      enclosureNo: "",
-      otherActivity: ""
+      activity: "",
+      enclosureNo: ""
     })
   }
 >
-  + Add Society Contribution
+  + Add Institute Activity
 </button>
 
+<hr />
 
 
+    {/* ================= STEP 3C: CONTRIBUTION TO SOCIETY ================= */}
+    <h4>E. Contribution to Society (Max Credit 10)</h4>
+
+    {societyActivities.map((row, index) => (
+      <div className="activity-card" key={index}>
+
+        <div className="activity-row">
+          <select
+            name="activity"
+            value={row.activity}
+            onChange={(e) =>
+              handleArrayChange(setSocietyActivities, index, e)
+            }
+          >
+            <option value="">Select Activity</option>
+            <option value="Induction Program">Induction Program</option>
+            <option value="Yoga Classes">Yoga Classes</option>
+            <option value="Blood Donation">Blood Donation</option>
+            <option value="Unnat Bharat Abhiyan">Unnat Bharat Abhiyan</option>
+            
+          </select>
+
+          <input
+            name="semester"
+            placeholder="Semester / Year"
+            value={row.semester}
+            onChange={(e) =>
+              handleArrayChange(setSocietyActivities, index, e)
+            }
+          />
+        </div>
+
+        <div className="activity-row">
+          <input
+            name="enclosureNo"
+            placeholder="Enclosure No."
+            value={row.enclosureNo}
+            onChange={(e) =>
+              handleArrayChange(setSocietyActivities, index, e)
+            }
+          />
+
+          {societyActivities.length > 1 && (
+            <button
+              type="button"
+              className="btn-remove"
+              onClick={() =>
+                removeRow(setSocietyActivities, index)
+              }
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+      </div>
+    ))}
+
+    <button
+      type="button"
+      className="btn-outline"
+      onClick={() =>
+        addRow(setSocietyActivities, {
+          activity: "",
+          semester: "",
+          enclosureNo: ""
+        })
+      }
+    >
+      + Add Society Contribution
+    </button>
 </fieldset>
     {/* ================= NAVIGATION ================= */}
     <div className="form-actions">
