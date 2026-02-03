@@ -546,7 +546,6 @@ const removeTeachingRow = (index) => {
 };
 
 
-
  const handleSaveDraft = async () => {
   try {
     const payload = buildBackendPayload("draft");
