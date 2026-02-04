@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import API from "../../api";
 import "../../styles/AppraisalForm.css";
 
 
+const isHOD = location.pathname.startsWith("/hod");
 
+const submitEndpoint = isHOD
+  ? "/hod/submit/"
+  : "/faculty/submit/";
 
 export default function FacultyAppraisalForm() {
  
@@ -365,24 +369,8 @@ const removeTeachingRow = (index) => {
     { activityType: "", description: "", role: "", duration: "", year: " " }
   ]);
 
-  const handleCategoryTwoChange = (index, e) => {
-    const updated = [...categoryTwo];
-    updated[index][e.target.name] = e.target.value;
-    setCategoryTwo(updated);
-  };
-
-  const addCategoryTwoRow = () => {
-    setCategoryTwo([
-      ...categoryTwo,
-      { activityType: "", description: "", role: "", duration: "", year: " " }
-    ]);
-  };
-
-  const removeCategoryTwoRow = (index) => {
-    if (categoryTwo.length > 1) {
-      setCategoryTwo(categoryTwo.filter((_, i) => i !== index));
-    }
-  };
+  
+  
 
   /* ================= SECTION 4 ================= */
  
@@ -614,7 +602,13 @@ const removeTeachingRow = (index) => {
     const payload = buildBackendPayload("draft");
     console.log("DRAFT PAYLOAD", payload);
 
-    await API.post("faculty/submit/", payload);
+    await API.post(submitEndpoint, payload, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access")}`
+  }
+  });
+
+
     alert("Draft saved successfully");
   } catch (error) {
     console.error(error);
@@ -1053,14 +1047,20 @@ const handleSubmitForm = async () => {
     console.log("✅ FINAL SUBMIT PAYLOAD", payload);
 
     // 4️⃣ API call
-    await API.post("/faculty/submit/", payload);
+    await API.post(submitEndpoint, payload, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access")}`
+    }
+  });
+
+
 
     // 5️⃣ Post-submit actions
     setFormStatus("submitted");
     localStorage.removeItem("facultyDraft");
 
     alert("Appraisal submitted and sent to HOD for review.");
-    navigate("/faculty/dashboard");
+    navigate("/HOD/dashboard");
 
   } catch (error) {
     // 6️⃣ Proper error handling
@@ -1073,15 +1073,6 @@ const handleSubmitForm = async () => {
   }
 };
 
-const handleFinalSubmit = () => {
-  // after validation, confirmation etc.
-
-  localStorage.setItem("appraisalStatus", "under_review");
-
-  alert("Appraisal submitted successfully!");
-
-  navigate("/faculty/dashboard")
-};
 
 
 
