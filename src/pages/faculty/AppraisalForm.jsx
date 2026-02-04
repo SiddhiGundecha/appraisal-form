@@ -4,17 +4,17 @@ import API from "../../api";
 import "../../styles/AppraisalForm.css";
 
 
-const isHOD = location.pathname.startsWith("/hod");
-
-const submitEndpoint = isHOD
-  ? "/hod/submit/"
-  : "/faculty/submit/";
-
 export default function FacultyAppraisalForm() {
  
   const location = useLocation();   // new added
 
   const navigate = useNavigate();
+
+  const isHOD = location.pathname.startsWith("/hod");
+  const submitEndpoint = isHOD
+    ? "/hod/submit/"
+    : "/faculty/submit/";
+
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState({});
   const from = location.pathname.startsWith("/hod")
@@ -1059,7 +1059,11 @@ const handleSubmitForm = async () => {
     setFormStatus("submitted");
     localStorage.removeItem("facultyDraft");
 
-    alert("Appraisal submitted and sent to HOD for review.");
+    alert(
+      isHOD
+        ? "Appraisal submitted and sent to Principal for review."
+        : "Appraisal submitted and sent to HOD for review."
+    );
     navigate("/HOD/dashboard");
 
   } catch (error) {
