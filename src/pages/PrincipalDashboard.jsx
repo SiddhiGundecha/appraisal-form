@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/HodDashboard.css"; // reuse same CSS
+import "../styles/HodDashboard.css";
 
 export default function PrincipalDashboard() {
   const navigate = useNavigate();
@@ -8,66 +8,219 @@ export default function PrincipalDashboard() {
   const [activeTab, setActiveTab] = useState("pending");
   const [selected, setSelected] = useState(null);
   const [remarks, setRemarks] = useState("");
+  const token = localStorage.getItem("access");
+
+  const handleStartReview = async () => {
+  try {
+    const token = localStorage.getItem("access");
+
+    const res = await fetch(
+      `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/start-review/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!res.ok) throw new Error("Start review failed");
+
+    alert("Moved to Principal Review");
+
+    setSelected((prev) => ({
+      ...prev,
+      status: "REVIEWED_BY_PRINCIPAL",
+    }));
+  } catch (err) {
+    alert("Failed to start review");
+    console.error(err);
+  }
+};
+
+  const handleApprove = async () => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/approve/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Approve failed");
+
+      alert("Approved by Principal. Now finalize.");
+
+      // Update UI state
+      setSelected((prev) => ({
+        ...prev,
+        status: "PRINCIPAL_APPROVED",
+      }));
+    } catch (err) {
+      alert("Approval failed");
+      console.error(err);
+    }
+  };
+
+  const handleFinalize = async () => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/finalize/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Finalize failed");
+
+      alert("Appraisal finalized & PDFs generated");
+
+      setSelected(null); // go back to list
+    } catch (err) {
+      alert("Finalize failed");
+      console.error(err);
+    }
+  };
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [submissions, setSubmissions] = useState({
-    pending: [
-      {
-        id: 1,
-        name: "Dr. Meera Kulkarni",
-        designation: "HOD – Mechanical",
-        department: "Mechanical Engineering",
-        academicYear: "2024-25",
-        submittedOn: "2025-01-22",
-      },
-    ],
+    pending: [],
     processed: [],
   });
 
-  const handleFinalApprove = () => {
+  /* ================= FETCH PRINCIPAL APPRAISALS ================= */
+  useEffect(() => {
+    const fetchAppraisals = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const token = localStorage.getItem("access");
+
+        const res = await fetch(
+          "http://127.0.0.1:8000/api/principal/appraisals/",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Failed to fetch");
+
+        const data = await res.json();
+
+        // Split pending vs processed
+        const pending = [];
+        const processed = [];
+
+        data.forEach((a) => {
+          if (
+            a.status === "REVIEWED_BY_PRINCIPAL" ||
+            a.status === "HOD_APPROVED"
+          ) {
+            pending.push(a);
+          } else {
+            processed.push(a);
+          }
+        });
+
+        setSubmissions({ pending, processed });
+      } catch (err) {
+        console.error(err);
+        setError("Unable to load appraisals");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAppraisals();
+  }, []);
+
+  /* ================= FINAL APPROVE ================= */
+  const handleFinalApprove = async () => {
     if (!selected) return;
 
-    setSubmissions((prev) => ({
-      pending: prev.pending.filter((s) => s.id !== selected.id),
-      processed: [
-        ...prev.processed,
-        {
-          ...selected,
-          status: "approved",
-          remarks,
-          date: new Date().toISOString().split("T")[0],
-        },
-      ],
-    }));
+    try {
+      const token = localStorage.getItem("access");
 
-    setSelected(null);
-    setRemarks("");
-    alert("Final approval completed.");
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/finalize/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Approval failed");
+
+      setSubmissions((prev) => ({
+        pending: prev.pending.filter((a) => a.id !== selected.id),
+        processed: [...prev.processed, { ...selected, status: "APPROVED" }],
+      }));
+
+      setSelected(null);
+      setRemarks("");
+      alert("Final approval completed");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to approve appraisal");
+    }
   };
 
-  const handleSendBack = () => {
+  /* ================= REQUEST CHANGES ================= */
+  const handleSendBack = async () => {
     if (!remarks.trim()) {
-      alert("Remarks are required.");
+      alert("Remarks are required");
       return;
     }
 
-    setSubmissions((prev) => ({
-      pending: prev.pending.filter((s) => s.id !== selected.id),
-      processed: [
-        ...prev.processed,
-        {
-          ...selected,
-          status: "changes_requested",
-          remarks,
-          date: new Date().toISOString().split("T")[0],
-        },
-      ],
-    }));
+    try {
+      const token = localStorage.getItem("access");
 
-    setSelected(null);
-    setRemarks("");
-    alert("Sent back to HOD.");
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/return/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ remarks }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Return failed");
+
+      setSubmissions((prev) => ({
+        pending: prev.pending.filter((a) => a.id !== selected.id),
+        processed: [
+          ...prev.processed,
+          { ...selected, status: "CHANGES_REQUESTED", remarks },
+        ],
+      }));
+
+      setSelected(null);
+      setRemarks("");
+      alert("Sent back to faculty");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send back");
+    }
   };
 
+  /* ================= REVIEW SCREEN ================= */
   if (selected) {
     return (
       <div className="hod-container">
@@ -79,16 +232,10 @@ export default function PrincipalDashboard() {
           <h2>Appraisal Review (Final)</h2>
 
           <div className="info-grid">
-            <div><b>Name:</b> {selected.name}</div>
+            <div><b>Name:</b> {selected.faculty_name}</div>
             <div><b>Department:</b> {selected.department}</div>
             <div><b>Designation:</b> {selected.designation}</div>
-            <div><b>Academic Year:</b> {selected.academicYear}</div>
-          </div>
-
-          <h3>View Appraisal Forms</h3>
-         <div className="view-forms-row">
-            <button className="view-form-btn">View SPPU Form</button>
-            <button className="view-form-btn">View PBAS Form</button>
+            <div><b>Academic Year:</b> {selected.academic_year}</div>
           </div>
 
           <h3>Principal Remarks</h3>
@@ -98,10 +245,26 @@ export default function PrincipalDashboard() {
             onChange={(e) => setRemarks(e.target.value)}
           />
 
-          <div className="action-btn-row">
-            <button className="approve-btn" onClick={handleFinalApprove}>
-              Final Approve
-            </button>
+         <div className="action-btn-row">
+
+            {selected.status === "HOD_APPROVED" && (
+              <button className="approve-btn" onClick={handleStartReview}>
+                Start Review
+              </button>
+            )}
+
+            {selected.status === "REVIEWED_BY_PRINCIPAL" && (
+              <button className="approve-btn" onClick={handleApprove}>
+                Approve
+              </button>
+            )}
+
+            {selected.status === "PRINCIPAL_APPROVED" && (
+              <button className="approve-btn" onClick={handleFinalize}>
+                Finalize & Generate PDF
+              </button>
+            )}
+
             <button className="reject-btn" onClick={handleSendBack}>
               Request Changes
             </button>
@@ -111,20 +274,25 @@ export default function PrincipalDashboard() {
     );
   }
 
+  /* ================= LIST VIEW ================= */
   return (
     <div className="hod-container">
-      {/* Header Card */}
       <div className="hod-header-card">
         <div>
           <h1>Principal Dashboard</h1>
           <p className="subtitle">Final Approval of Appraisal Forms</p>
         </div>
-        <button className="logout-btn" onClick={() => navigate("/login")}>
+        <button
+          className="logout-btn"
+          onClick={() => {
+            localStorage.clear();
+            navigate("/login");
+          }}
+        >
           Logout
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="tab-row">
         <button
           className={`tab ${activeTab === "pending" ? "active" : ""}`}
@@ -140,23 +308,25 @@ export default function PrincipalDashboard() {
         </button>
       </div>
 
+      {loading && <p className="empty">Loading…</p>}
+      {error && <p className="empty">{error}</p>}
+
       <div className="list">
         {activeTab === "pending" &&
           (submissions.pending.length === 0 ? (
-            <p className="empty">No pending approvals.</p>
+            <p className="empty">No pending approvals</p>
           ) : (
             submissions.pending.map((s) => (
               <div className="list-card" key={s.id}>
                 <div>
-                  <h3>{s.name}</h3>
+                  <h3>{s.faculty_name}</h3>
                   <p>{s.department}</p>
-                  <p>Academic Year: {s.academicYear}</p>
-                  <span className="status pending">Pending Final Approval</span>
+                  <p>Academic Year: {s.academic_year}</p>
+                  <span className="status pending">
+                    Pending Final Approval
+                  </span>
                 </div>
-                <button
-                  className="primary-btn"
-                  onClick={() => setSelected(s)}
-                >
+                <button className="primary-btn" onClick={() => setSelected(s)}>
                   View
                 </button>
               </div>
@@ -165,16 +335,16 @@ export default function PrincipalDashboard() {
 
         {activeTab === "processed" &&
           (submissions.processed.length === 0 ? (
-            <p className="empty">No processed appraisals.</p>
+            <p className="empty">No processed appraisals</p>
           ) : (
             submissions.processed.map((s, i) => (
               <div className="list-card" key={i}>
                 <div>
-                  <h3>{s.name}</h3>
+                  <h3>{s.faculty_name}</h3>
                   <p>{s.department}</p>
-                  <p><b>Remarks:</b> {s.remarks}</p>
-                  <span className={`status ${s.status}`}>
-                    {s.status === "approved"
+                  {s.remarks && <p><b>Remarks:</b> {s.remarks}</p>}
+                  <span className={`status ${s.status?.toLowerCase()}`}>
+                    {s.status === "APPROVED"
                       ? "Approved"
                       : "Changes Requested"}
                   </span>
