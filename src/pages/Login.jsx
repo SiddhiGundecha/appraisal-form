@@ -8,7 +8,7 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(false); // kept for UI only
   const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
@@ -16,45 +16,63 @@ export default function Login() {
     setError("");
 
     try {
-      // 🔐 JWT Login
+      /* =======================
+         1. LOGIN & GET JWT
+         ======================= */
       const response = await API.post("token/", {
-        username: email.trim(), // backend treats this as username
+        username: email.trim(),
         password: password,
       });
 
-      // Clear any old tokens
+      const { access, refresh } = response.data;
+
+      /* =======================
+         2. CLEAR OLD DATA
+         ======================= */
       localStorage.clear();
       sessionStorage.clear();
 
-      // Store tokens
-      if (remember) {
-        localStorage.setItem("access_token", response.data.access);
-        localStorage.setItem("refresh_token", response.data.refresh);
-      } else {
-        sessionStorage.setItem("access_token", response.data.access);
-        sessionStorage.setItem("refresh_token", response.data.refresh);
-      }
+      /* =======================
+         3. STORE TOKENS (FIX)
+         ======================= */
+      localStorage.setItem("access", access);
+      localStorage.setItem("refresh", refresh);
 
-      // 🔥 Fetch logged-in user profile
+      /* =======================
+         4. ATTACH TOKEN TO AXIOS
+         ======================= */
+      API.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${access}`;
+
+      /* =======================
+         5. FETCH USER PROFILE
+         ======================= */
       const profileRes = await API.get("me/");
       const user = profileRes.data;
 
       localStorage.setItem("loggedInUser", JSON.stringify(user));
 
-      // 🔁 Backend-controlled role routing
+      /* =======================
+         6. ROLE-BASED ROUTING
+         ======================= */
       switch (user.role) {
-        case "Admin":
-          navigate("/admin/dashboard");
-          break;
         case "FACULTY":
           navigate("/faculty/dashboard");
           break;
+
         case "HOD":
           navigate("/hod/dashboard");
           break;
+
         case "PRINCIPAL":
           navigate("/principal/dashboard");
           break;
+
+        case "Admin":
+          navigate("/admin/dashboard");
+          break;
+
         default:
           setError("Unauthorized role");
       }

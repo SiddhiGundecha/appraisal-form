@@ -1,17 +1,62 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import "../../styles/dashboard.css";
 
 export default function FacultyDashboard() {
   const navigate = useNavigate();
 
-  // read status
-  const appraisalStatus = localStorage.getItem("appraisalStatus");
+  /* ================= STATE ================= */
+  const [appraisal, setAppraisal] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  /* ================= FETCH CURRENT APPRAISAL ================= */
+  useEffect(() => {
+    
+    const fetchCurrentAppraisal = async () => {
+      try {
+        const token = localStorage.getItem("access");
+        const response = await fetch(
+        "http://127.0.0.1:8000/api/faculty/appraisal/status/",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-  // disable form ONLY when under review or approved
+        const data = await response.json();
+
+        // if empty object => no appraisal yet
+        if (Object.keys(data).length === 0) {
+          setAppraisal(null);
+        } else {
+          setAppraisal(data);
+        }
+      } catch (error) {
+        console.error("Failed to load appraisal status", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentAppraisal();
+  }, []);
+
+  /* ================= DERIVED LOGIC ================= */
+
+  // disable form when appraisal is under review or approved
   const disableNewForm =
-    appraisalStatus === "under_review" ||
-    appraisalStatus === "approved";
+    appraisal &&
+    appraisal.status &&
+    ![
+      "DRAFT",
+      "RETURNED_BY_HOD",
+      "RETURNED_BY_PRINCIPAL",
+    ].includes(appraisal.status);
 
+  /* ================= UI ================= */
   return (
     <div className="dashboard-page">
       {/* HEADER CARD */}
@@ -34,7 +79,7 @@ export default function FacultyDashboard() {
         </button>
       </div>
 
-      {/* CARDS */}
+      {/* DASHBOARD CARDS */}
       <div className="dashboard-grid">
 
         {/* PROFILE */}
@@ -55,15 +100,17 @@ export default function FacultyDashboard() {
         >
           <h3>Appraisal Form</h3>
           <p>
-            {disableNewForm
-              ? "Appraisal already submitted"
-              : appraisalStatus === "changes_requested"
+            {loading
+              ? "Checking appraisal status..."
+              : !appraisal || !appraisal.status
+              ? "Fill and submit your annual faculty appraisal"
+              : appraisal.status.includes("RETURNED")
               ? "Edit and re-submit appraisal"
-              : "Fill and submit your annual faculty appraisal"}
+              : "Appraisal already submitted"}
           </p>
         </div>
 
-        {/* STATUS – ALWAYS ENABLED */}
+        {/* APPRAISAL STATUS */}
         <div
           className="dashboard-card"
           onClick={() => navigate("/faculty/appraisal/status")}

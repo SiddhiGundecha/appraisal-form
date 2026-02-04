@@ -3,23 +3,24 @@ import { useNavigate } from "react-router-dom";
 import "../../styles/FacultyAppraisalStatus.css";
 
 /* 🔁 TURN THIS OFF WHEN BACKEND IS READY */
-const USE_DUMMY_DATA = true;
+const USE_DUMMY_DATA = false;
 
 export default function FacultyAppraisalStatus() {
   const navigate = useNavigate();
 
+  // ✅ FIX: use plain string, NOT API constant
   const [activeTab, setActiveTab] = useState("under-review");
   const [loading, setLoading] = useState(!USE_DUMMY_DATA);
   const [error, setError] = useState(null);
 
-  /* ================= STATE (DJANGO-FRIENDLY) ================= */
+  /* ================= STATE ================= */
   const [appraisalData, setAppraisalData] = useState({
     underReview: [],
     approved: [],
     changesRequested: [],
   });
 
-  /* ================= DUMMY DATA (PREVIEW ONLY) ================= */
+  /* ================= DUMMY DATA ================= */
   const dummyData = {
     underReview: [
       {
@@ -30,56 +31,38 @@ export default function FacultyAppraisalStatus() {
         status: "Under Review",
       },
     ],
-    approved: [
-      {
-        id: 2,
-        academic_year: "2023-24",
-        submitted_date: "10 Dec 2023",
-        current_level: "Completed",
-        status: "Approved",
-      },
-    ],
-    changesRequested: [
-      {
-        id: 3,
-        academic_year: "2022-23",
-        submitted_date: "05 Jan 2023",
-        current_level: "Principal",
-        status: "Changes Requested",
-        remarks:
-          "Please update the research publications section and attach supporting documents.",
-      },
-    ],
+    approved: [],
+    changesRequested: [],
   };
 
   /* ================= DATA LOADING ================= */
   useEffect(() => {
     if (USE_DUMMY_DATA) {
-      // ✅ Preview mode
       setAppraisalData(dummyData);
       setLoading(false);
       return;
     }
 
-    // ✅ Real Django API mode
     const fetchStatus = async () => {
       try {
         setLoading(true);
         setError(null);
 
+        const token = localStorage.getItem("access");
+
         const response = await fetch(
-          "http://localhost:8000/api/faculty/appraisal/status/",
+          "http://127.0.0.1:8000/api/faculty/appraisal/status/",
           {
-            credentials: "include",
+            method: "GET",
             headers: {
-              Accept: "application/json",
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
             },
           }
         );
 
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Invalid response from backend");
+        if (!response.ok) {
+          throw new Error("Unauthorized");
         }
 
         const data = await response.json();
@@ -89,8 +72,8 @@ export default function FacultyAppraisalStatus() {
           approved: data.approved || [],
           changesRequested: data.changes_requested || [],
         });
-      } catch
-      {
+      } catch (err) {
+        console.error(err);
         setError("Unable to load appraisal status");
       } finally {
         setLoading(false);
@@ -100,7 +83,7 @@ export default function FacultyAppraisalStatus() {
     fetchStatus();
   }, []);
 
-  /* ================= RENDER HELPERS ================= */
+  /* ================= RENDER ================= */
   const renderEmpty = (msg) => (
     <div className="empty-state">
       <p>{msg}</p>
@@ -130,34 +113,28 @@ export default function FacultyAppraisalStatus() {
         </div>
 
         <div className="status-card-body">
-       <div className="status-info-grid">
-  <div className="status-info-item">
-    <span className="status-info-label">Academic Year</span>
-    <span className="status-info-value">{item.academic_year}</span>
-  </div>
+          <div className="status-info-grid">
+            <div className="status-info-item">
+              <span className="status-info-label">Submitted Date</span>
+              <span className="status-info-value">
+                {item.submitted_date || "—"}
+              </span>
+            </div>
 
-  <div className="status-info-item">
-    <span className="status-info-label">Submitted Date</span>
-    <span className="status-info-value">
-      {item.submitted_date || "—"}
-    </span>
-  </div>
+            <div className="status-info-item">
+              <span className="status-info-label">Current Level</span>
+              <span className="status-info-value">
+                {item.current_level || "—"}
+              </span>
+            </div>
 
-  <div className="status-info-item">
-    <span className="status-info-label">Current Level</span>
-    <span className="status-info-value">
-      {item.current_level || "—"}
-    </span>
-  </div>
-
-  <div className="status-info-item">
-    <span className="status-info-label">Status</span>
-    <span className={`status-badge ${activeTab}`}>
-      {item.status}
-    </span>
-  </div>
-</div>
-
+            <div className="status-info-item">
+              <span className="status-info-label">Status</span>
+              <span className={`status-badge ${activeTab}`}>
+                {item.status}
+              </span>
+            </div>
+          </div>
 
           {activeTab === "changes-requested" && item.remarks && (
             <div className="remarks-section">
@@ -179,7 +156,6 @@ export default function FacultyAppraisalStatus() {
     ));
   };
 
-  /* ================= UI ================= */
   return (
     <div className="status-page">
       <button className="back-btn" onClick={() => navigate("/faculty/dashboard")}>
@@ -198,12 +174,14 @@ export default function FacultyAppraisalStatus() {
         >
           🟡 Under Review
         </button>
+
         <button
           className={`status-tab ${activeTab === "approved" ? "active" : ""}`}
           onClick={() => setActiveTab("approved")}
         >
           🟢 Approved
         </button>
+
         <button
           className={`status-tab ${
             activeTab === "changes-requested" ? "active" : ""
