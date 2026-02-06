@@ -1,0 +1,20 @@
+# Changes and Findings
+
+## Startup Unified Command
+- Installed `concurrently` as a dev dependency in `appraisal-form`.
+- Added `dev:all` script to `appraisal-form/package.json`.
+  - Command: `concurrently "npm run dev" "python ../appraisal_dp/appraisal_backend/manage.py runserver"`
+  - Note: Ensure virtual environment is activated before running.
+
+
+## Unused Code/Files Identified
+- `d:\Antigravity\appraisal-form\app_form_dup.jsx`: Deleted (unused duplicate of `src/pages/faculty/AppraisalForm.jsx`).
+- `d:\Antigravity\appraisal-form\src\styles\FacultyAppraisalForm2.css`: Deleted (unused CSS file).
+- `authentication_skeleton` (Backend App): Noted as potentially unused (registered in `settings.py` but not present in `urls.py`).
+
+
+## Code Refinements
+- `d:\Antigravity\appraisal-form\src\pages\faculty\AppraisalForm.jsx`:
+  - Removed/Commented out debug `console.log` statements for payload debugging.
+- General project check: Verified that logic remains unchanged as requested.
+

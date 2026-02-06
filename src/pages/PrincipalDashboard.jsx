@@ -11,32 +11,32 @@ export default function PrincipalDashboard() {
   const token = localStorage.getItem("access");
 
   const handleStartReview = async () => {
-  try {
-    const token = localStorage.getItem("access");
+    try {
+      const token = localStorage.getItem("access");
 
-    const res = await fetch(
-      `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/start-review/`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/start-review/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    if (!res.ok) throw new Error("Start review failed");
+      if (!res.ok) throw new Error("Start review failed");
 
-    alert("Moved to Principal Review");
+      alert("Moved to Principal Review");
 
-    setSelected((prev) => ({
-      ...prev,
-      status: "REVIEWED_BY_PRINCIPAL",
-    }));
-  } catch (err) {
-    alert("Failed to start review");
-    console.error(err);
-  }
-};
+      setSelected((prev) => ({
+        ...prev,
+        status: "REVIEWED_BY_PRINCIPAL",
+      }));
+    } catch (err) {
+      alert("Failed to start review");
+      console.error(err);
+    }
+  };
 
   const handleApprove = async () => {
     try {
@@ -125,7 +125,8 @@ export default function PrincipalDashboard() {
         data.forEach((a) => {
           if (
             a.status === "REVIEWED_BY_PRINCIPAL" ||
-            a.status === "HOD_APPROVED"
+            a.status === "HOD_APPROVED" ||
+            a.status === "SUBMITTED"
           ) {
             pending.push(a);
           } else {
@@ -144,6 +145,28 @@ export default function PrincipalDashboard() {
 
     fetchAppraisals();
   }, []);
+
+  /* ================= FETCH DETAILS WHEN SELECTED ================= */
+  useEffect(() => {
+    if (!selected) return;
+
+    const fetchDetails = async () => {
+      try {
+        const token = localStorage.getItem("access");
+        const res = await fetch(`http://127.0.0.1:8000/api/appraisal/${selected.id}/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setSelected((prev) => ({ ...prev, appraisal_data: data.appraisal_data }));
+      } catch (err) {
+        console.error("Failed to fetch appraisal data", err);
+      }
+    };
+
+    fetchDetails();
+  }, [selected?.id]);
+
 
   /* ================= FINAL APPROVE ================= */
   const handleFinalApprove = async () => {
@@ -245,13 +268,24 @@ export default function PrincipalDashboard() {
             onChange={(e) => setRemarks(e.target.value)}
           />
 
-         <div className="action-btn-row">
+          {selected.appraisal_data && (
+            <div className="form-data-view" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', maxHeight: '400px', overflowY: 'auto' }}>
+              <h3>Appraisal Form Details</h3>
+              <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>
+                {JSON.stringify(selected.appraisal_data, null, 2)}
+              </pre>
+            </div>
+          )}
 
-            {selected.status === "HOD_APPROVED" && (
+
+          <div className="action-btn-row">
+
+            {(selected.status === "HOD_APPROVED" || (selected.status === "SUBMITTED" && selected.is_hod_appraisal)) && (
               <button className="approve-btn" onClick={handleStartReview}>
                 Start Review
               </button>
             )}
+
 
             {selected.status === "REVIEWED_BY_PRINCIPAL" && (
               <button className="approve-btn" onClick={handleApprove}>
@@ -322,6 +356,11 @@ export default function PrincipalDashboard() {
                   <h3>{s.faculty_name}</h3>
                   <p>{s.department}</p>
                   <p>Academic Year: {s.academic_year}</p>
+                  {s.is_hod_appraisal && (
+                    <span className="badge-hod" style={{ background: '#6366f1', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', marginBottom: '8px' }}>
+                      HOD SUBMISSION
+                    </span>
+                  )}
                   <span className="status pending">
                     Pending Final Approval
                   </span>
@@ -342,12 +381,22 @@ export default function PrincipalDashboard() {
                 <div>
                   <h3>{s.faculty_name}</h3>
                   <p>{s.department}</p>
+                  {s.is_hod_appraisal && (
+                    <span className="badge-hod" style={{ background: '#6366f1', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', marginBottom: '8px' }}>
+                      HOD SUBMISSION
+                    </span>
+                  )}
                   {s.remarks && <p><b>Remarks:</b> {s.remarks}</p>}
                   <span className={`status ${s.status?.toLowerCase()}`}>
-                    {s.status === "APPROVED"
-                      ? "Approved"
-                      : "Changes Requested"}
+                    {s.status === "FINALIZED"
+                      ? "Finalized"
+                      : s.status === "PRINCIPAL_APPROVED"
+                        ? "Principal Approved"
+                        : s.status === "RETURNED_BY_PRINCIPAL" || s.status === "RETURNED_BY_HOD"
+                          ? "Changes Requested"
+                          : s.status}
                   </span>
+
                 </div>
               </div>
             ))

@@ -146,7 +146,7 @@ export default function FacultyAppraisalStatus() {
           {activeTab === "changes-requested" && (
             <button
               className="edit-btn"
-              onClick={() => navigate("/faculty/appraisal")}
+              onClick={() => navigate(editPath)}
             >
               Edit & Re-submit
             </button>
@@ -156,9 +156,13 @@ export default function FacultyAppraisalStatus() {
     ));
   };
 
+  const isHOD = localStorage.getItem("role") === "HOD";
+  const backPath = isHOD ? "/hod/dashboard" : "/faculty/dashboard";
+  const editPath = isHOD ? "/hod/appraisal-form" : "/faculty/appraisal";
+
   return (
     <div className="status-page">
-      <button className="back-btn" onClick={() => navigate("/faculty/dashboard")}>
+      <button className="back-btn" onClick={() => navigate(backPath)}>
         ← Back to Dashboard
       </button>
 
@@ -183,9 +187,8 @@ export default function FacultyAppraisalStatus() {
         </button>
 
         <button
-          className={`status-tab ${
-            activeTab === "changes-requested" ? "active" : ""
-          }`}
+          className={`status-tab ${activeTab === "changes-requested" ? "active" : ""
+            }`}
           onClick={() => setActiveTab("changes-requested")}
         >
           🔴 Changes Requested

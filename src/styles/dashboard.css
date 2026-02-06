@@ -151,6 +151,7 @@
     padding: 24px;
   }
 }
+
 /* ===== Appraisal Status Card Extras ===== */
 
 .status-text {
@@ -208,4 +209,99 @@
 
 .dashboard-card.disabled:hover {
   box-shadow: none;
+}
+
+/* ===== Submission History Section ===== */
+.dashboard-history-section {
+  max-width: 1280px;
+  margin: 40px auto 0;
+  background: white;
+  padding: 32px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.dashboard-history-section h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 20px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+}
+
+.history-info {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.history-year {
+  font-weight: 600;
+  color: #374151;
+}
+
+.history-status {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  text-transform: capitalize;
+}
+
+.history-status.under-review {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.history-status.approved {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.history-status.changes-requested {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.history-status.draft {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.view-btn {
+  background: white;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-btn:hover {
+  background: #2563eb;
+  color: white;
+}
+
+.empty-state-text {
+  color: #6b7280;
+  font-style: italic;
 }

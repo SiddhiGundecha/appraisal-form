@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import "../styles/HODDashboard.css";
+import "../styles/dashboard.css";
 
 export default function HODDashboard() {
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ export default function HODDashboard() {
         setLoading(true);
         setError("");
 
+        // 1️⃣ Fetch Faculty submissions to review
         const res = await API.get("hod/appraisals/");
         const data = res.data || [];
 
@@ -48,10 +50,27 @@ export default function HODDashboard() {
         );
 
         const processed = data.filter(
-          (a) => a.status === "HOD_APPROVED"
+          (a) => ["HOD_APPROVED", "REVIEWED_BY_PRINCIPAL", "PRINCIPAL_APPROVED", "FINALIZED"].includes(a.status)
         );
 
         setSubmissions({ pending, processed });
+
+        // 2️⃣ Fetch HOD's OWN appraisals
+        const ownRes = await API.get("hod/appraisals/me/");
+        const ownData = ownRes.data || [];
+        if (ownData.length > 0) {
+          const latest = ownData[0];
+          const actualStatus = latest.status;
+          const isReturned = actualStatus === "RETURNED_BY_PRINCIPAL";
+
+          setHodOwnAppraisal({
+            academicYear: latest.academic_year,
+            status: (actualStatus.toLowerCase() === "draft" || isReturned) ? "in_progress" : "submitted",
+            submissionDate: latest.updated_at ? latest.updated_at.split("T")[0] : null,
+            appraisal_id: latest.appraisal_id,
+            actual_status: actualStatus
+          });
+        }
       } catch (err) {
         console.error(err);
         setError("Failed to load appraisals");
@@ -62,6 +81,22 @@ export default function HODDashboard() {
 
     fetchAppraisals();
   }, []);
+
+  /* ================= FETCH DETAILS FOR REVIEW ================= */
+  useEffect(() => {
+    if (!selectedSubmission) return;
+
+    const fetchDetails = async () => {
+      try {
+        const res = await API.get(`appraisal/${selectedSubmission.appraisal_id}/`);
+        setSelectedSubmission((prev) => ({ ...prev, appraisal_data: res.data.appraisal_data }));
+      } catch (err) {
+        console.error("Failed to fetch details", err);
+      }
+    };
+
+    fetchDetails();
+  }, [selectedSubmission?.appraisal_id]);
 
   /* ================= ACTIONS ================= */
   const handleStartReview = async () => {
@@ -150,62 +185,62 @@ export default function HODDashboard() {
     navigate("/hod/appraisal-form");
   };
 
- const handleSubmitOwnAppraisal = async () => {
-  try {
-    const token =
-      localStorage.getItem("access") ||
-      sessionStorage.getItem("access");
+  const handleSubmitOwnAppraisal = async () => {
+    try {
+      const token =
+        localStorage.getItem("access") ||
+        sessionStorage.getItem("access");
 
-    if (!token) {
-      alert("Not authenticated");
-      return;
-    }
-
-    const payload = JSON.parse(
-      localStorage.getItem("hodAppraisalPayload")
-    );
-
-    if (!payload) {
-      alert("No appraisal data found");
-      return;
-    }
-
-    const res = await fetch(
-      "http://127.0.0.1:8000/api/hod/submit/",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
+      if (!token) {
+        alert("Not authenticated");
+        return;
       }
-    );
 
-    const data = await res.json();
+      const payload = JSON.parse(
+        localStorage.getItem("hodAppraisalPayload")
+      );
 
-    if (!res.ok) {
-      throw new Error(data.error || "Submission failed");
+      if (!payload) {
+        alert("No appraisal data found");
+        return;
+      }
+
+      const res = await fetch(
+        "http://127.0.0.1:8000/api/hod/submit/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Submission failed");
+      }
+
+      alert("HOD appraisal submitted successfully");
+
+      const updated = {
+        academicYear: payload.academic_year,
+        status: "submitted",
+        submissionDate: new Date().toISOString().split("T")[0],
+      };
+
+      setHodOwnAppraisal(updated);
+      localStorage.setItem(
+        "hodOwnAppraisal",
+        JSON.stringify(updated)
+      );
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to submit appraisal");
     }
-
-    alert("HOD appraisal submitted successfully");
-
-    const updated = {
-      academicYear: payload.academic_year,
-      status: "submitted",
-      submissionDate: new Date().toISOString().split("T")[0],
-    };
-
-    setHodOwnAppraisal(updated);
-    localStorage.setItem(
-      "hodOwnAppraisal",
-      JSON.stringify(updated)
-    );
-  } catch (err) {
-    console.error(err);
-    alert(err.message || "Failed to submit appraisal");
-  }
-};
+  };
 
 
 
@@ -233,6 +268,16 @@ export default function HODDashboard() {
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
           />
+
+          {selectedSubmission.appraisal_data && (
+            <div className="form-data-view" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', maxHeight: '400px', overflowY: 'auto' }}>
+              <h3>Appraisal Form Details</h3>
+              <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>
+                {JSON.stringify(selectedSubmission.appraisal_data, null, 2)}
+              </pre>
+            </div>
+          )}
+
 
           <div className="action-btn-row">
             {selectedSubmission.status === "SUBMITTED" && (
@@ -269,33 +314,43 @@ export default function HODDashboard() {
         </button>
       </div>
 
-      <div className="card">
-        <h2>My Appraisal Form</h2>
-        <p><b>Academic Year:</b> {hodOwnAppraisal.academicYear}</p>
+      <div className="dashboard-grid">
+        {/* PROFILE */}
+        <div
+          className="dashboard-card"
+          onClick={() => navigate("/faculty/profile")}
+        >
+          <h3>My Profile</h3>
+          <p>View official details and update personal information</p>
+        </div>
 
-        {hodOwnAppraisal.status === "not_started" && (
-          <button className="primary-btn" onClick={handleFillOwnAppraisal}>
-            📝 Fill My Appraisal Form
-          </button>
-        )}
+        {/* APPRAISAL FORM */}
+        <div
+          className={`dashboard-card ${hodOwnAppraisal.status === "submitted" ? "disabled" : ""}`}
+          onClick={() => {
+            if (hodOwnAppraisal.status !== "submitted") handleFillOwnAppraisal();
+          }}
+        >
+          <h3>My Appraisal Form</h3>
+          <p>
+            {hodOwnAppraisal.actual_status === "RETURNED_BY_PRINCIPAL"
+              ? "Returned for Changes - Please edit and resubmit"
+              : hodOwnAppraisal.status === "not_started"
+                ? "Fill and submit your annual faculty appraisal"
+                : hodOwnAppraisal.status === "in_progress"
+                  ? "Continue filling your appraisal form"
+                  : "Appraisal already submitted"}
+          </p>
 
-        {hodOwnAppraisal.status === "in_progress" && (
-          <div className="action-btn-row">
-            <button className="secondary-btn" onClick={handleFillOwnAppraisal}>
-              ✏ Continue
+          {(hodOwnAppraisal.status === "in_progress" || hodOwnAppraisal.actual_status === "RETURNED_BY_PRINCIPAL") && (
+            <button className="approve-btn" style={{ marginTop: '12px', height: '40px', padding: '0 16px', fontSize: '14px' }} onClick={(e) => { e.stopPropagation(); navigate("/hod/appraisal-form"); }}>
+              {hodOwnAppraisal.actual_status === "RETURNED_BY_PRINCIPAL" ? "✍️ Edit & Resubmit" : "📤 Submit to Principal"}
             </button>
-            <button className="approve-btn" onClick={handleSubmitOwnAppraisal}>
-              📤 Submit to Principal
-            </button>
-          </div>
-        )}
-
-        {hodOwnAppraisal.status === "submitted" && (
-          <p>✅ Submitted on {hodOwnAppraisal.submissionDate}</p>
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="tab-row">
+      <div className="tab-row" style={{ marginTop: '32px' }}>
         <button
           className={activeTab === "pending" ? "tab active" : "tab"}
           onClick={() => setActiveTab("pending")}
@@ -309,6 +364,29 @@ export default function HODDashboard() {
           Processed
         </button>
       </div>
+
+      {/* SUBMISSION HISTORY (HOD OWN) moved down */}
+      {hodOwnAppraisal.appraisal_id && (
+        <div className="dashboard-history-section" style={{ marginBottom: '32px' }}>
+          <h3>My Submission History</h3>
+          <div className="history-list">
+            <div className="history-item">
+              <div className="history-info">
+                <span className="history-year">AY {hodOwnAppraisal.academicYear}</span>
+                <span className={`history-status ${hodOwnAppraisal.actual_status?.toLowerCase().replace(/_/g, "-")}`}>
+                  {hodOwnAppraisal.actual_status?.replace(/_/g, " ")}
+                </span>
+              </div>
+              <button
+                className="view-btn"
+                onClick={() => navigate("/faculty/appraisal/status")}
+              >
+                Track Status
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === "pending" && (
         <div className="list">
@@ -347,7 +425,9 @@ export default function HODDashboard() {
               <div>
                 <h3>{sub.faculty_name}</h3>
                 <p>{sub.department} | {sub.academic_year}</p>
-                <p><b>Status:</b> {sub.status}</p>
+                <span className={`status ${sub.status?.toLowerCase().replace(/_/g, "-")}`}>
+                  {sub.status?.replace(/_/g, " ")}
+                </span>
               </div>
             </div>
           ))}

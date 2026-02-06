@@ -8,31 +8,39 @@ export default function FacultyDashboard() {
   /* ================= STATE ================= */
   const [appraisal, setAppraisal] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   /* ================= FETCH CURRENT APPRAISAL ================= */
   useEffect(() => {
-    
+
     const fetchCurrentAppraisal = async () => {
       try {
         const token = localStorage.getItem("access");
         const response = await fetch(
-        "http://127.0.0.1:8000/api/faculty/appraisal/status/",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+          "http://127.0.0.1:8000/api/faculty/appraisal/status/",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         const data = await response.json();
 
-        // if empty object => no appraisal yet
-        if (Object.keys(data).length === 0) {
+        // Flatten into a single list to find the "current" or "latest" one
+        const allAppraisals = [
+          ...(data.under_review || []),
+          ...(data.approved || []),
+          ...(data.changes_requested || [])
+        ];
+
+        if (allAppraisals.length === 0) {
           setAppraisal(null);
         } else {
-          setAppraisal(data);
+          // Sort by id descending to get the most recent
+          const latest = allAppraisals.sort((a, b) => b.id - a.id)[0];
+          setAppraisal(latest);
         }
       } catch (error) {
         console.error("Failed to load appraisal status", error);
@@ -52,8 +60,7 @@ export default function FacultyDashboard() {
     appraisal.status &&
     ![
       "DRAFT",
-      "RETURNED_BY_HOD",
-      "RETURNED_BY_PRINCIPAL",
+      "Changes Requested",
     ].includes(appraisal.status);
 
   /* ================= UI ================= */
@@ -103,22 +110,40 @@ export default function FacultyDashboard() {
             {loading
               ? "Checking appraisal status..."
               : !appraisal || !appraisal.status
-              ? "Fill and submit your annual faculty appraisal"
-              : appraisal.status.includes("RETURNED")
-              ? "Edit and re-submit appraisal"
-              : "Appraisal already submitted"}
+                ? "Fill and submit your annual faculty appraisal"
+                : appraisal.status === "Changes Requested"
+                  ? "Edit and re-submit appraisal"
+                  : "Appraisal already submitted"}
           </p>
         </div>
 
-        {/* APPRAISAL STATUS */}
-        <div
-          className="dashboard-card"
-          onClick={() => navigate("/faculty/appraisal/status")}
-        >
-          <h3>Appraisal Status</h3>
-          <p>Track approval status from HOD and Principal</p>
-        </div>
 
+        {/* APPRAISAL HISTORY */}
+        <div className="dashboard-history-section">
+          <h3>Submission History</h3>
+          {loading ? (
+            <p>Loading history...</p>
+          ) : !appraisal ? (
+            <p className="empty-state-text">No previous submissions found.</p>
+          ) : (
+            <div className="history-list">
+              <div className="history-item">
+                <div className="history-info">
+                  <span className="history-year">AY {appraisal.academic_year}</span>
+                  <span className={`history-status ${appraisal.status.toLowerCase().replace(/_/g, "-")}`}>
+                    {appraisal.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <button
+                  className="view-btn"
+                  onClick={() => navigate("/faculty/appraisal/status")}
+                >
+                  Track Status
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
