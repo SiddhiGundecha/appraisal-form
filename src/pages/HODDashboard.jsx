@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import API from "../api";
 import "../styles/HODDashboard.css";
 import "../styles/dashboard.css";
+import AppraisalSummary from "../components/AppraisalSummary";
 
 export default function HODDashboard() {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ export default function HODDashboard() {
         );
 
         const processed = data.filter(
-          (a) => ["HOD_APPROVED", "REVIEWED_BY_PRINCIPAL", "PRINCIPAL_APPROVED", "FINALIZED"].includes(a.status)
+          (a) => ["HOD_APPROVED", "REVIEWED_BY_PRINCIPAL", "PRINCIPAL_APPROVED", "FINALIZED", "RETURNED_BY_HOD", "RETURNED_BY_PRINCIPAL"].includes(a.status)
         );
 
         setSubmissions({ pending, processed });
@@ -271,10 +272,7 @@ export default function HODDashboard() {
 
           {selectedSubmission.appraisal_data && (
             <div className="form-data-view" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', maxHeight: '400px', overflowY: 'auto' }}>
-              <h3>Appraisal Form Details</h3>
-              <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>
-                {JSON.stringify(selectedSubmission.appraisal_data, null, 2)}
-              </pre>
+              <AppraisalSummary data={selectedSubmission.appraisal_data} />
             </div>
           )}
 

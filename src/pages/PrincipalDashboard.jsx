@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/HodDashboard.css";
+import AppraisalSummary from "../components/AppraisalSummary";
 
 export default function PrincipalDashboard() {
   const navigate = useNavigate();
@@ -270,10 +271,7 @@ export default function PrincipalDashboard() {
 
           {selected.appraisal_data && (
             <div className="form-data-view" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', maxHeight: '400px', overflowY: 'auto' }}>
-              <h3>Appraisal Form Details</h3>
-              <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>
-                {JSON.stringify(selected.appraisal_data, null, 2)}
-              </pre>
+              <AppraisalSummary data={selected.appraisal_data} />
             </div>
           )}
 

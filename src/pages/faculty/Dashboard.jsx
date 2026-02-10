@@ -134,12 +134,41 @@ export default function FacultyDashboard() {
                     {appraisal.status.replace(/_/g, " ")}
                   </span>
                 </div>
-                <button
-                  className="view-btn"
-                  onClick={() => navigate("/faculty/appraisal/status")}
-                >
-                  Track Status
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="view-btn"
+                    onClick={() => navigate("/faculty/appraisal/status")}
+                  >
+                    Track Status
+                  </button>
+                  {["FINALIZED", "APPROVED", "PRINCIPAL_APPROVED"].includes(appraisal.status) && (
+                    <button
+                      className="view-btn"
+                      style={{ background: '#059669' }}
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem("access");
+                          const res = await fetch(`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/download/`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          if (!res.ok) throw new Error("Download failed");
+                          const blob = await res.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `Appraisal_${appraisal.academic_year}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                        } catch (e) {
+                          alert("Failed to download PDF. It might not be generated yet.");
+                        }
+                      }}
+                    >
+                      Download PDF
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* PDF Download Buttons for Finalized Appraisals */}

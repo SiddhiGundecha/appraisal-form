@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import API from "../../api";
+import AppraisalSummary from "../../components/AppraisalSummary";
 import "../../styles/AppraisalForm.css";
 
 
@@ -1090,15 +1091,34 @@ export default function FacultyAppraisalForm() {
           ...buildPBASScores(),
           ...buildPBASCounts(),
 
+          teaching_process: teachingActivities.map(t => {
+            const assigned = Number(t.totalClassesAssigned || 0);
+            const conducted = Number(t.classesConducted || 0);
+            const points = assigned > 0 ? (conducted / assigned) * 10 : 0; // Approximate per-course score
+            return {
+              semester: t.semester,
+              course: `${t.courseName} (${t.courseCode})`,
+              scheduled: assigned,
+              held: conducted,
+              points: parseFloat(points.toFixed(2)),
+              enclosure: t.enclosureNo || ""
+            };
+          }),
+
           student_feedback: studentFeedback.map(f => ({
-            feedback_score: Number(f.averageScore)
+            semester: f.semester,
+            course: `${f.courseName} (${f.courseCode})`,
+            average: Number(f.averageScore),
+            feedback_score: Number(f.averageScore), // For scoring engine compatibility
+            enclosure: f.enclosureNo || ""
           })),
 
           departmental_activities: departmentalActivities.map(a => ({
             semester: a.semester,
             activity: a.activity,
-            credits_claimed: Number(a.credit),
-            enclosure_no: a.enclosureNo || null
+            criteria: a.criteria,
+            credit: Number(a.credit),
+            enclosure: a.enclosureNo || ""
           })),
 
           institute_activities: instituteActivities.map(a => ({
@@ -2833,60 +2853,37 @@ export default function FacultyAppraisalForm() {
                   className="btn-outline"
                   onClick={() => setShowSPPUPreview(true)}
                 >
-                  Preview SPPU Form
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-outline"
-                  onClick={() => setShowPBASPreview(true)}
-                >
-                  Preview PBAS Form
+                  Preview Form Data
                 </button>
               </div>
             </div>
 
-            {/* ================= SPPU PDF PREVIEW ================= */}
+            {/* ================= APPRAISAL DATA PREVIEW ================= */}
             {showSPPUPreview && (
               <div className="entry-card">
-                <h4>SPPU Appraisal Form (Preview)</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h4>Appraisal Data Preview</h4>
+                  <button
+                    className="btn-back"
+                    style={{ margin: 0 }}
+                    onClick={() => setShowSPPUPreview(false)}
+                  >
+                    Close Preview
+                  </button>
+                </div>
 
-                <iframe
-                  title="SPPU Preview"
-                  src="/dummy/sppu-preview.pdf"
-                  width="100%"
-                  height="600px"
-                  style={{ border: "1px solid #e5e7eb", borderRadius: "8px" }}
-                />
-
-                <button
-                  className="btn-back"
-                  onClick={() => setShowSPPUPreview(false)}
-                >
-                  Close Preview
-                </button>
-              </div>
-            )}
-
-            {/* ================= PBAS PDF PREVIEW ================= */}
-            {showPBASPreview && (
-              <div className="entry-card">
-                <h4>PBAS Appraisal Form (Preview)</h4>
-
-                <iframe
-                  title="PBAS Preview"
-                  src="/dummy/pbas-preview.pdf"
-                  width="100%"
-                  height="600px"
-                  style={{ border: "1px solid #e5e7eb", borderRadius: "8px" }}
-                />
-
-                <button
-                  className="btn-back"
-                  onClick={() => setShowPBASPreview(false)}
-                >
-                  Close Preview
-                </button>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "16px", maxHeight: "600px", overflowY: "auto" }}>
+                  <AppraisalSummary data={{
+                    generalInfo,
+                    teachingActivities,
+                    studentFeedback,
+                    departmentalActivities,
+                    instituteActivities,
+                    societyActivities,
+                    research,
+                    acrDetails
+                  }} />
+                </div>
               </div>
             )}
 
