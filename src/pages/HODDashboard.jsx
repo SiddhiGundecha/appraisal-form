@@ -384,6 +384,36 @@ export default function HODDashboard() {
                 Track Status
               </button>
             </div>
+
+            {/* PDF Download Buttons for HOD's Own Finalized Appraisal */}
+            {hodOwnAppraisal.actual_status === "FINALIZED" && (
+              <div style={{ marginTop: '12px', padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' }}>
+                <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#166534', fontSize: '14px' }}>📄 Download Your Appraisal PDFs:</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <a
+                    href={`http://127.0.0.1:8000/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/sppu-enhanced/`}
+                    download
+                    style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
+                  >
+                    📄 SPPU PDF
+                  </a>
+                  <a
+                    href={`http://127.0.0.1:8000/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/pbas-enhanced/`}
+                    download
+                    style={{ padding: '8px 16px', background: '#8b5cf6', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
+                  >
+                    📄 PBAS PDF
+                  </a>
+                  <a
+                    href={`http://127.0.0.1:8000/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/comprehensive/`}
+                    download
+                    style={{ padding: '8px 16px', background: '#10b981', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
+                  >
+                    📄 Comprehensive PDF
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -428,6 +458,36 @@ export default function HODDashboard() {
                 <span className={`status ${sub.status?.toLowerCase().replace(/_/g, "-")}`}>
                   {sub.status?.replace(/_/g, " ")}
                 </span>
+
+                {/* PDF Download Buttons for Finalized Faculty Appraisals */}
+                {sub.status === "FINALIZED" && (
+                  <div style={{ marginTop: '10px' }}>
+                    <p style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '13px' }}>Download PDFs:</p>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <a
+                        href={`http://127.0.0.1:8000/api/appraisal/${sub.appraisal_id}/pdf/sppu-enhanced/`}
+                        download
+                        style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
+                      >
+                        📄 SPPU
+                      </a>
+                      <a
+                        href={`http://127.0.0.1:8000/api/appraisal/${sub.appraisal_id}/pdf/pbas-enhanced/`}
+                        download
+                        style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
+                      >
+                        📄 PBAS
+                      </a>
+                      <a
+                        href={`http://127.0.0.1:8000/api/appraisal/${sub.appraisal_id}/pdf/comprehensive/`}
+                        download
+                        style={{ padding: '6px 12px', background: '#10b981', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
+                      >
+                        📄 Comprehensive
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

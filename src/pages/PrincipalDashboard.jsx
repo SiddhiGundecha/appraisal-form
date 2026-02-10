@@ -397,6 +397,36 @@ export default function PrincipalDashboard() {
                           : s.status}
                   </span>
 
+                  {/* PDF Download Buttons for Finalized Appraisals */}
+                  {s.status === "FINALIZED" && (
+                    <div style={{ marginTop: '10px' }}>
+                      <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>Download PDFs:</p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <a 
+                          href={`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/sppu-enhanced/`}
+                          download
+                          style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
+                        >
+                          📄 SPPU PDF
+                        </a>
+                        <a 
+                          href={`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/pbas-enhanced/`}
+                          download
+                          style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
+                        >
+                          📄 PBAS PDF
+                        </a>
+                        <a 
+                          href={`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/comprehensive/`}
+                          download
+                          style={{ padding: '6px 12px', background: '#10b981', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
+                        >
+                          📄 Comprehensive PDF
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               </div>
             ))

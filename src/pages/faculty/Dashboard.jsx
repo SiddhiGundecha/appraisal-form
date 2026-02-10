@@ -141,6 +141,36 @@ export default function FacultyDashboard() {
                   Track Status
                 </button>
               </div>
+
+              {/* PDF Download Buttons for Finalized Appraisals */}
+              {appraisal.status === "FINALIZED" && (
+                <div style={{ marginTop: '12px', padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' }}>
+                  <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#166534', fontSize: '14px' }}>📄 Download Your Appraisal PDFs:</p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <a
+                      href={`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/sppu-enhanced/`}
+                      download
+                      style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
+                    >
+                      📄 SPPU PDF
+                    </a>
+                    <a
+                      href={`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/pbas-enhanced/`}
+                      download
+                      style={{ padding: '8px 16px', background: '#8b5cf6', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
+                    >
+                      📄 PBAS PDF
+                    </a>
+                    <a
+                      href={`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/comprehensive/`}
+                      download
+                      style={{ padding: '8px 16px', background: '#10b981', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
+                    >
+                      📄 Comprehensive PDF
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
