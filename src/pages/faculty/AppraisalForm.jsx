@@ -1077,9 +1077,13 @@ export default function FacultyAppraisalForm() {
         },
 
         activities: {
-          departmental: departmentalActivities.length > 0,
-          institute: instituteActivities.length > 0,
-          society: societyActivities.length > 0
+          administrative_responsibility: sppuInvolvement.administrative === "Yes",
+          exam_duties: sppuInvolvement.examDuty === "Yes",
+          student_related: sppuInvolvement.studentActivity === "Yes",
+          organizing_events: sppuInvolvement.seminarOrg === "Yes",
+          phd_guidance: sppuInvolvement.phdGuidance === "Yes",
+          research_project: sppuInvolvement.researchProject === "Yes",
+          sponsored_project: false
         },
 
         research: {
