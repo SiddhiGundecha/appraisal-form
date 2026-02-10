@@ -512,143 +512,47 @@ export default function FacultyAppraisalForm() {
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [formStatus, setFormStatus] = useState("draft");
 
+  // DEPRECATED: Use buildAppraisalPayload instead to avoid data loss
   const buildBackendPayload = (submitAction = "draft") => {
-    const researchEntries = [];
+    return buildAppraisalPayload(submitAction.toUpperCase());
+  };
 
-    /* ================= RESEARCH ENTRIES ================= */
 
-    research.papers.forEach(p => {
-      if (!p.title) return;
-      researchEntries.push({
-        type: "journal_papers",
-        count: 1,
-        title: p.title,
-        year: Number(p.year),
-        enclosure_no: p.enclosureNo
-      });
-    });
+  const buildAppraisalPayload = (submitAction = "SUBMIT") => {
+    const totalAssigned = teachingActivities.reduce(
+      (sum, t) => sum + Number(t.totalClassesAssigned),
+      0
+    );
 
-    research.publications.forEach(p => {
-      if (!p.title) return;
-      researchEntries.push({
-        type: "book_national",
-        count: 1,
-        title: p.title,
-        year: Number(p.year),
-        enclosure_no: p.enclosureNo
-      });
-    });
-
-    research.invitedTalks.forEach(t => {
-      if (!t.year) return;
-      researchEntries.push({
-        type: "invited_lecture_national",
-        count: 1,
-        year: Number(t.year),
-        enclosure_no: t.enclosureNo
-      });
-    });
-
-    /* ================= PBAS RAW COUNTS (FOR BACKEND SCORING) ================= */
-
-    const pbasCounts = {
-      research: {
-        journal_papers: research.papers.filter(
-          p => p.ugcCare === "Yes"
-        ).length,
-
-        conference_papers: 0
-      },
-
-      publications: {
-        book_national: research.publications.filter(
-          p => p.type === "Book" && p.publisherType === "National"
-        ).length,
-
-        book_international: research.publications.filter(
-          p => p.type === "Book" && p.publisherType === "International"
-        ).length
-      },
-
-      ict: {
-        innovative_pedagogy: research.moocsIct.filter(
-          m => m.category === "Curriculum Design"
-        ).length,
-
-        mooc: {
-          module: research.moocsIct.reduce(
-            (sum, m) => sum + Number(m.creditClaimed || 0),
-            0
-          )
-        }
-      },
-
-      research_guidance: {
-        phd_awarded: research.guidance.reduce(
-          (sum, g) =>
-            g.degree === "PhD" && g.status === "Awarded"
-              ? sum + Number(g.count || 0)
-              : sum,
-          0
-        )
-      },
-
-      patents: {
-        international: research.patents.filter(
-          p => p.type === "International" && p.status === "Granted"
-        ).length
-      },
-
-      invited_lectures: {
-        national: research.invitedTalks.filter(
-          t => t.level === "National"
-        ).length
-      }
-    };
-
-    /* ================= FINAL PAYLOAD ================= */
+    const totalTaught = teachingActivities.reduce(
+      (sum, t) => sum + Number(t.classesConducted),
+      0
+    );
 
     return {
-      academic_year: generalInfo.academicYear,     // e.g. "2024-25"
-      semester: "Odd",
-      form_type: "PBAS",
+      academic_year: generalInfo.academicYear,
+      semester: "SEM_1",
+      form_type: "FACULTY",
 
       appraisal_data: {
-        submit_action: submitAction,               // "draft" | "submit"
+        submit_action: submitAction,
 
-        // ✅ Save full state for perfect draft restoration
-        _ui_state: {
-          generalInfo,
-          teachingActivities,
-          studentFeedback,
-          sppuInvolvement,
-          departmentalActivities,
-          instituteActivities,
-          societyActivities,
-          acrDetails,
-          research,
-          pbasScores
-        },
-
-        /* ================= GENERAL ================= */
         general: {
           faculty_name: generalInfo.facultyName,
-          department: generalInfo.department,
-          designation: generalInfo.designation
+          designation: generalInfo.designation,
+          department: generalInfo.department
         },
 
-        /* ================= TEACHING ================= */
         teaching: {
+          total_classes_assigned: totalAssigned,
+          classes_taught: totalTaught,
           courses: teachingActivities.map(t => ({
-            semester: t.semester,
             course_code: t.courseCode,
-            course_name: t.courseName,
-            scheduled_classes: Number(t.totalClassesAssigned),
-            held_classes: Number(t.classesConducted)
+            total_classes_assigned: Number(t.totalClassesAssigned),
+            classes_taught: Number(t.classesConducted)
           }))
         },
 
-        /* ================= ACTIVITIES ================= */
         activities: {
           administrative_responsibility: sppuInvolvement.administrative === "Yes",
           exam_duties: sppuInvolvement.examDuty === "Yes",
@@ -659,89 +563,62 @@ export default function FacultyAppraisalForm() {
           sponsored_project: false
         },
 
-        /* ================= RESEARCH (LIST – REQUIRED) ================= */
         research: {
-          entries: [
-            ...research.papers
-              .filter(p => p.title)
-              .map(p => ({
-                type: "journal_papers",
-                count: 1,
-                title: p.title,
-                year: Number(p.year),
-                enclosure_no: p.enclosureNo
-              })),
-
-            ...research.publications
-              .filter(p => p.title)
-              .map(p => ({
-                type: "book_national",
-                count: 1,
-                title: p.title,
-                year: Number(p.year),
-                enclosure_no: p.enclosureNo
-              })),
-
-            ...research.invitedTalks
-              .filter(t => t.year)
-              .map(t => ({
-                type: "invited_lecture_national",
-                count: 1,
-                year: Number(t.year),
-                enclosure_no: t.enclosureNo
-              }))
-          ]
+          entries: buildResearchEntries()
         },
 
-        /* ================= PBAS (MANDATORY BLOCK) ================= */
+        // ✅ PBAS BLOCK
         pbas: {
+          ...buildPBASScores(),
+          ...buildPBASCounts(),
+
+          teaching_process: teachingActivities.map(t => {
+            const assigned = Number(t.totalClassesAssigned || 0);
+            const conducted = Number(t.classesConducted || 0);
+            const points = assigned > 0 ? (conducted / assigned) * 10 : 0; // Approximate per-course score
+            return {
+              semester: t.semester,
+              course: `${t.courseName} (${t.courseCode})`,
+              scheduled: assigned,
+              held: conducted,
+              points: parseFloat(points.toFixed(2)),
+              enclosure: t.enclosureNo || ""
+            };
+          }),
+
           student_feedback: studentFeedback.map(f => ({
             semester: f.semester,
-            course_code: f.courseCode,
-            course_name: f.courseName,
-            feedback_score: Number(f.averageScore),
-            enclosure_no: f.enclosureNo
+            course: `${f.courseName} (${f.courseCode})`,
+            average: Number(f.averageScore),
+            feedback_score: Number(f.averageScore), // For scoring engine compatibility
+            enclosure: f.enclosureNo || ""
           })),
 
-          departmental_activities: departmentalActivities.map(d => ({
-            activity: d.activity,
-            semester: d.semester,
-            credits_claimed: Number(d.creditsClaimed),
-            enclosure_no: d.enclosureNo
+          departmental_activities: departmentalActivities.map(a => ({
+            semester: a.semester,
+            activity: a.activity,
+            criteria: a.criteria,
+            credit: Number(a.credit),
+            enclosure: a.enclosureNo || ""
           })),
 
-          institute_activities: instituteActivities.map(i => ({
-            activity: i.activity,
-            semester: i.semester,
-            credits_claimed: Number(i.creditsClaimed),
-            enclosure_no: i.enclosureNo
+          institute_activities: instituteActivities.map(a => ({
+            semester: a.semester,
+            activity: a.activity,
+            credits_claimed: Number(a.credit),
+            enclosure_no: a.enclosureNo || null
           })),
 
-          society_activities: societyActivities.map(s => ({
-            activity: s.activity,
-            semester: s.semester,
-            credits_claimed: Number(s.creditsClaimed),
-            enclosure_no: s.enclosureNo
-          })),
-
-          /* 🔥 REQUIRED BY validate_pbas_scores */
-          teaching_process: Number(pbasScores.teaching_process),
-          feedback: Number(pbasScores.feedback),
-          department: Number(pbasScores.department),
-          institute: Number(pbasScores.institute),
-          acr: Number(pbasScores.acr),
-          society: Number(pbasScores.society)
-        },
-
-        /* ================= ACR ================= */
-        acr: {
-          year: acrDetails.year,
-          grade: acrDetails.acrAvailable
+          society_activities: societyActivities.map(a => ({
+            semester: a.semester,
+            activity: a.activity,
+            credits_claimed: Number(a.credit),
+            enclosure_no: a.enclosureNo || null
+          }))
         }
       }
     };
   };
-
 
 
   const handleSaveDraft = async () => {
@@ -892,52 +769,77 @@ export default function FacultyAppraisalForm() {
 
     // Research Papers
     const journalPapers = research.papers.filter(p => p.title).length;
-    if (journalPapers > 0) counts.journal_papers = journalPapers;
+    if (journalPapers > 0) counts.peer_reviewed_journals = journalPapers;
 
     // Publications
     research.publications.forEach(p => {
       if (!p.type || !p.publisherType) return;
 
       if (p.type === "Book" && p.publisherType === "International") {
-        counts.book_international = (counts.book_international || 0) + 1;
+        counts.books_international = (counts.books_international || 0) + 1;
       }
       if (p.type === "Book" && p.publisherType === "National") {
-        counts.book_national = (counts.book_national || 0) + 1;
+        counts.books_national = (counts.books_national || 0) + 1;
       }
       if (p.type === "Chapter") {
-        counts.edited_book_chapter = (counts.edited_book_chapter || 0) + 1;
+        counts.chapter_edited_book = (counts.chapter_edited_book || 0) + 1;
+      }
+      if (p.type === "Editor" && p.publisherType === "International") {
+        counts.editor_book_international = (counts.editor_book_international || 0) + 1;
+      }
+      if (p.type === "Editor" && p.publisherType === "National") {
+        counts.editor_book_national = (counts.editor_book_national || 0) + 1;
+      }
+      if (p.type === "Translation") {
+        counts.translation_works = (counts.translation_works || 0) + 1;
       }
     });
 
     // Research Projects
     research.projects.forEach(p => {
-      if (p.status === "Completed" && p.amountSlab === ">10L") {
-        counts.project_completed_gt_10_lakhs =
-          (counts.project_completed_gt_10_lakhs || 0) + 1;
-      }
-      if (p.status === "Completed" && p.amountSlab === "<10L") {
-        counts.project_completed_lt_10_lakhs =
-          (counts.project_completed_lt_10_lakhs || 0) + 1;
+      if (p.status === "Completed") {
+        if (p.amountSlab === ">10L") {
+          counts.research_project_above_10l =
+            (counts.research_project_above_10l || 0) + 1;
+        } else {
+          counts.research_project_below_10l =
+            (counts.research_project_below_10l || 0) + 1;
+        }
+      } else if (p.status === "Ongoing") {
+        if (p.amountSlab === ">10L") {
+          counts.research_project_ongoing_above_10l =
+            (counts.research_project_ongoing_above_10l || 0) + 1;
+        } else {
+          counts.research_project_ongoing_below_10l =
+            (counts.research_project_ongoing_below_10l || 0) + 1;
+        }
       }
     });
 
     // Research Guidance
     research.guidance.forEach(g => {
       if (g.degree === "PhD" && g.status === "Awarded") {
-        counts.phd_awarded =
-          (counts.phd_awarded || 0) + Number(g.count || 0);
+        counts.phd_awarded = (counts.phd_awarded || 0) + Number(g.count || 0);
       }
-      if (g.degree === "PG" && g.status === "Submitted") {
-        counts.pg_dissertation_awarded =
-          (counts.pg_dissertation_awarded || 0) + Number(g.count || 0);
+      if (g.degree === "PhD" && g.status === "Submitted") {
+        counts.phd_submitted = (counts.phd_submitted || 0) + Number(g.count || 0);
+      }
+      if (g.degree === "PG") {
+        counts.mphil_pg_dissertation = (counts.mphil_pg_dissertation || 0) + Number(g.count || 0);
       }
     });
 
     // MOOCs
     research.moocsIct.forEach(m => {
-      if (Number(m.creditClaimed) > 0) {
-        counts.mooc_complete_4_quadrant =
-          (counts.mooc_complete_4_quadrant || 0) + 1;
+      if (m.category === "MOOC") {
+        if (m.role === "Course Coordinator") counts.moocs_coordinator = (counts.moocs_coordinator || 0) + 1;
+        else counts.moocs_4quadrant = (counts.moocs_4quadrant || 0) + 1;
+      }
+      if (m.category === "E-Content") {
+        counts.econtent_4quadrant_complete = (counts.econtent_4quadrant_complete || 0) + 1;
+      }
+      if (m.category === "Curriculum Design") {
+        counts.curriculum_design = (counts.curriculum_design || 0) + 1;
       }
     });
 
@@ -946,27 +848,40 @@ export default function FacultyAppraisalForm() {
       if (c.category === "Consultancy") {
         counts.consultancy = (counts.consultancy || 0) + 1;
       }
+      if (c.category === "Policy Document") {
+        if (c.level === "International") counts.policy_international = (counts.policy_international || 0) + 1;
+        else counts.policy_national = (counts.policy_national || 0) + 1;
+      }
     });
 
     // Awards
     research.awards.forEach(a => {
       if (a.level === "International") {
         counts.award_international = (counts.award_international || 0) + 1;
-      }
-      if (a.level === "National") {
+      } else {
         counts.award_national = (counts.award_national || 0) + 1;
+      }
+    });
+
+    // Patents
+    research.patents.forEach(p => {
+      if (p.type === "International") {
+        counts.patent_international = (counts.patent_international || 0) + 1;
+      } else {
+        counts.patent_national = (counts.patent_national || 0) + 1;
       }
     });
 
     // Invited Talks
     research.invitedTalks.forEach(t => {
       if (t.level === "International Abroad") {
-        counts.invited_lecture_international_abroad =
-          (counts.invited_lecture_international_abroad || 0) + 1;
-      }
-      if (t.level === "National") {
-        counts.invited_lecture_national =
-          (counts.invited_lecture_national || 0) + 1;
+        counts.conference_international_abroad = (counts.conference_international_abroad || 0) + 1;
+      } else if (t.level === "International India") {
+        counts.conference_international_country = (counts.conference_international_country || 0) + 1;
+      } else if (t.level === "National") {
+        counts.conference_national = (counts.conference_national || 0) + 1;
+      } else {
+        counts.conference_state_university = (counts.conference_state_university || 0) + 1;
       }
     });
 
@@ -1041,114 +956,6 @@ export default function FacultyAppraisalForm() {
   };
 
 
-  const buildAppraisalPayload = () => {
-    const totalAssigned = teachingActivities.reduce(
-      (sum, t) => sum + Number(t.totalClassesAssigned),
-      0
-    );
-
-    const totalTaught = teachingActivities.reduce(
-      (sum, t) => sum + Number(t.classesConducted),
-      0
-    );
-
-    return {
-      academic_year: generalInfo.academicYear,
-      semester: "SEM_1",
-      form_type: "FACULTY",
-
-      appraisal_data: {
-        submit_action: "SUBMIT",
-
-        general: {
-          faculty_name: generalInfo.facultyName,
-          designation: generalInfo.designation,
-          department: generalInfo.department
-        },
-
-        teaching: {
-          total_classes_assigned: totalAssigned,
-          classes_taught: totalTaught,
-          courses: teachingActivities.map(t => ({
-            course_code: t.courseCode,
-            total_classes_assigned: Number(t.totalClassesAssigned),
-            classes_taught: Number(t.classesConducted)
-          }))
-        },
-
-        activities: {
-          administrative_responsibility: sppuInvolvement.administrative === "Yes",
-          exam_duties: sppuInvolvement.examDuty === "Yes",
-          student_related: sppuInvolvement.studentActivity === "Yes",
-          organizing_events: sppuInvolvement.seminarOrg === "Yes",
-          phd_guidance: sppuInvolvement.phdGuidance === "Yes",
-          research_project: sppuInvolvement.researchProject === "Yes",
-          sponsored_project: false
-        },
-
-        research: {
-          entries: buildResearchEntries()
-        },
-
-        // ✅ PBAS BLOCK
-        pbas: {
-          ...buildPBASScores(),
-          ...buildPBASCounts(),
-
-          teaching_process: teachingActivities.map(t => {
-            const assigned = Number(t.totalClassesAssigned || 0);
-            const conducted = Number(t.classesConducted || 0);
-            const points = assigned > 0 ? (conducted / assigned) * 10 : 0; // Approximate per-course score
-            return {
-              semester: t.semester,
-              course: `${t.courseName} (${t.courseCode})`,
-              scheduled: assigned,
-              held: conducted,
-              points: parseFloat(points.toFixed(2)),
-              enclosure: t.enclosureNo || ""
-            };
-          }),
-
-          student_feedback: studentFeedback.map(f => ({
-            semester: f.semester,
-            course: `${f.courseName} (${f.courseCode})`,
-            average: Number(f.averageScore),
-            feedback_score: Number(f.averageScore), // For scoring engine compatibility
-            enclosure: f.enclosureNo || ""
-          })),
-
-          departmental_activities: departmentalActivities.map(a => ({
-            semester: a.semester,
-            activity: a.activity,
-            criteria: a.criteria,
-            credit: Number(a.credit),
-            enclosure: a.enclosureNo || ""
-          })),
-
-          institute_activities: instituteActivities.map(a => ({
-            semester: a.semester,
-            activity: a.activity,
-            credits_claimed: Number(a.credit),
-            enclosure_no: a.enclosureNo || null
-          })),
-
-          society_activities: societyActivities.map(a => ({
-            semester: a.semester,
-            activity: a.activity,
-            credits_claimed: Number(a.credit),
-            enclosure_no: a.enclosureNo || null
-          }))
-        },
-
-        acr: {
-          grade: acrDetails.acrAvailable === "Yes" ? "A" : "C"
-        }
-      }
-    };
-  };
-
-
-
   const buildPBASCounts = () => {
     return {
       research: {
@@ -1221,7 +1028,7 @@ export default function FacultyAppraisalForm() {
 
     try {
       // 3️⃣ Build payload (ONLY ONCE)
-      const payload = buildAppraisalPayload();
+      const payload = buildBackendPayload(); // Changed to call buildBackendPayload
       // console.log("✅ FINAL SUBMIT PAYLOAD", payload);
 
 
@@ -1266,12 +1073,7 @@ export default function FacultyAppraisalForm() {
     }
   };
 
-
-
-
-
   // ================= DEPARTMENTAL ACTIVITIES HANDLERS =================
-
   const handleDeptChange = (index, field, value) => {
     setDepartmentalActivities(prev => {
       const copy = [...prev];
@@ -1279,6 +1081,7 @@ export default function FacultyAppraisalForm() {
       return copy;
     });
   };
+
   const addDeptRow = () => {
     setDepartmentalActivities(prev => [
       ...prev,
@@ -1291,8 +1094,6 @@ export default function FacultyAppraisalForm() {
         otherActivity: ""
       }
     ]);
-
-
   };
 
   const removeDeptRow = (index) => {
@@ -1300,25 +1101,18 @@ export default function FacultyAppraisalForm() {
       prev.length > 1 ? prev.filter((_, i) => i !== index) : prev
     );
   };
-  // ===== STEP 4 HANDLERS (RESEARCH SECTION) =====
 
+  // ===== STEP 4 HANDLERS (RESEARCH SECTION) =====
   const handleResearchChange = (section, index, field, value) => {
     setResearch(prev => {
       const updated = [...prev[section]];
       updated[index][field] = value;
-
-      return {
-        ...prev,
-        [section]: updated
-      };
+      return { ...prev, [section]: updated };
     });
   };
 
   const addResearchRow = (section, emptyRow) => {
-    setResearch(prev => ({
-      ...prev,
-      [section]: [...prev[section], emptyRow]
-    }));
+    setResearch(prev => ({ ...prev, [section]: [...prev[section], emptyRow] }));
   };
 
   const removeResearchRow = (section, index) => {
@@ -1327,6 +1121,7 @@ export default function FacultyAppraisalForm() {
       [section]: prev[section].filter((_, i) => i !== index)
     }));
   };
+
   const handleStudentFeedbackChange = (index, field, value) => {
     setStudentFeedback(prev => {
       const copy = [...prev];
@@ -1353,11 +1148,11 @@ export default function FacultyAppraisalForm() {
       prev.length > 1 ? prev.filter((_, i) => i !== index) : prev
     );
   };
+
   const handleAcrChange = (e) => {
     const { name, value } = e.target;
     setAcrDetails(prev => ({ ...prev, [name]: value }));
   };
-
 
   /* ================= RENDER ================= */
   return (
