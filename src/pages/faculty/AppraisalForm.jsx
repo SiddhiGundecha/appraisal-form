@@ -567,6 +567,12 @@ export default function FacultyAppraisalForm() {
           entries: buildResearchEntries()
         },
 
+        acr: {
+          grade: Number(acrDetails.creditPoints),
+          year: acrDetails.year,
+          enclosure_no: acrDetails.enclosureNo
+        },
+
         // ✅ PBAS BLOCK
         pbas: {
           ...buildPBASScores(),
@@ -769,20 +775,20 @@ export default function FacultyAppraisalForm() {
 
     // Research Papers
     const journalPapers = research.papers.filter(p => p.title).length;
-    if (journalPapers > 0) counts.peer_reviewed_journals = journalPapers;
+    if (journalPapers > 0) counts.journal_papers = journalPapers;
 
     // Publications
     research.publications.forEach(p => {
       if (!p.type || !p.publisherType) return;
 
       if (p.type === "Book" && p.publisherType === "International") {
-        counts.books_international = (counts.books_international || 0) + 1;
+        counts.book_international = (counts.book_international || 0) + 1;
       }
       if (p.type === "Book" && p.publisherType === "National") {
-        counts.books_national = (counts.books_national || 0) + 1;
+        counts.book_national = (counts.book_national || 0) + 1;
       }
       if (p.type === "Chapter") {
-        counts.chapter_edited_book = (counts.chapter_edited_book || 0) + 1;
+        counts.edited_book_chapter = (counts.edited_book_chapter || 0) + 1;
       }
       if (p.type === "Editor" && p.publisherType === "International") {
         counts.editor_book_international = (counts.editor_book_international || 0) + 1;
@@ -791,7 +797,7 @@ export default function FacultyAppraisalForm() {
         counts.editor_book_national = (counts.editor_book_national || 0) + 1;
       }
       if (p.type === "Translation") {
-        counts.translation_works = (counts.translation_works || 0) + 1;
+        counts.translation_book = (counts.translation_book || 0) + 1;
       }
     });
 
@@ -799,19 +805,19 @@ export default function FacultyAppraisalForm() {
     research.projects.forEach(p => {
       if (p.status === "Completed") {
         if (p.amountSlab === ">10L") {
-          counts.research_project_above_10l =
-            (counts.research_project_above_10l || 0) + 1;
+          counts.project_completed_gt_10_lakhs =
+            (counts.project_completed_gt_10_lakhs || 0) + 1;
         } else {
-          counts.research_project_below_10l =
-            (counts.research_project_below_10l || 0) + 1;
+          counts.project_completed_lt_10_lakhs =
+            (counts.project_completed_lt_10_lakhs || 0) + 1;
         }
       } else if (p.status === "Ongoing") {
         if (p.amountSlab === ">10L") {
-          counts.research_project_ongoing_above_10l =
-            (counts.research_project_ongoing_above_10l || 0) + 1;
+          counts.project_ongoing_gt_10_lakhs =
+            (counts.project_ongoing_gt_10_lakhs || 0) + 1;
         } else {
-          counts.research_project_ongoing_below_10l =
-            (counts.research_project_ongoing_below_10l || 0) + 1;
+          counts.project_ongoing_lt_10_lakhs =
+            (counts.project_ongoing_lt_10_lakhs || 0) + 1;
         }
       }
     });
@@ -822,24 +828,24 @@ export default function FacultyAppraisalForm() {
         counts.phd_awarded = (counts.phd_awarded || 0) + Number(g.count || 0);
       }
       if (g.degree === "PhD" && g.status === "Submitted") {
-        counts.phd_submitted = (counts.phd_submitted || 0) + Number(g.count || 0);
+        counts.mphil_submitted = (counts.mphil_submitted || 0) + Number(g.count || 0);
       }
       if (g.degree === "PG") {
-        counts.mphil_pg_dissertation = (counts.mphil_pg_dissertation || 0) + Number(g.count || 0);
+        counts.pg_dissertation_awarded = (counts.pg_dissertation_awarded || 0) + Number(g.count || 0);
       }
     });
 
     // MOOCs
     research.moocsIct.forEach(m => {
       if (m.category === "MOOC") {
-        if (m.role === "Course Coordinator") counts.moocs_coordinator = (counts.moocs_coordinator || 0) + 1;
-        else counts.moocs_4quadrant = (counts.moocs_4quadrant || 0) + 1;
+        if (m.role === "Course Coordinator") counts.mooc_course_coordinator = (counts.mooc_course_coordinator || 0) + 1;
+        else counts.mooc_complete_4_quadrant = (counts.mooc_complete_4_quadrant || 0) + 1;
       }
       if (m.category === "E-Content") {
-        counts.econtent_4quadrant_complete = (counts.econtent_4quadrant_complete || 0) + 1;
+        counts.econtent_complete_course = (counts.econtent_complete_course || 0) + 1;
       }
       if (m.category === "Curriculum Design") {
-        counts.curriculum_design = (counts.curriculum_design || 0) + 1;
+        counts.new_curriculum = (counts.new_curriculum || 0) + 1;
       }
     });
 
@@ -875,13 +881,13 @@ export default function FacultyAppraisalForm() {
     // Invited Talks
     research.invitedTalks.forEach(t => {
       if (t.level === "International Abroad") {
-        counts.conference_international_abroad = (counts.conference_international_abroad || 0) + 1;
+        counts.invited_lecture_international_abroad = (counts.invited_lecture_international_abroad || 0) + 1;
       } else if (t.level === "International India") {
-        counts.conference_international_country = (counts.conference_international_country || 0) + 1;
+        counts.invited_lecture_international_india = (counts.invited_lecture_international_india || 0) + 1;
       } else if (t.level === "National") {
-        counts.conference_national = (counts.conference_national || 0) + 1;
+        counts.invited_lecture_national = (counts.invited_lecture_national || 0) + 1;
       } else {
-        counts.conference_state_university = (counts.conference_state_university || 0) + 1;
+        counts.invited_lecture_state_university = (counts.invited_lecture_state_university || 0) + 1;
       }
     });
 
@@ -1028,7 +1034,7 @@ export default function FacultyAppraisalForm() {
 
     try {
       // 3️⃣ Build payload (ONLY ONCE)
-      const payload = buildBackendPayload(); // Changed to call buildBackendPayload
+      const payload = buildBackendPayload("submit"); // Changed to call buildBackendPayload
       // console.log("✅ FINAL SUBMIT PAYLOAD", payload);
 
 
