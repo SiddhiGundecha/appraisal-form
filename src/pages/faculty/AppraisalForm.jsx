@@ -206,6 +206,7 @@ export default function FacultyAppraisalForm() {
         type: "",
         title: "",
         publisherType: "",
+        translationType: "",
         year: "",
         enclosureNo: ""
       }
@@ -348,9 +349,12 @@ export default function FacultyAppraisalForm() {
             setGeneralInfo(prev => ({
               ...prev,
               academicYear: res.data.academic_year || prev.academic_year,
-              facultyName: draft.general.faculty_name || prev.facultyName,
-              department: draft.general.department || prev.department,
+              facultyName: draft.general.faculty_name || draft.general.name || prev.facultyName,
+              department: draft.general.department || draft.general.department_center || prev.department,
               designation: draft.general.designation || prev.designation,
+              communicationAddress: draft.general.communication_address || prev.communicationAddress,
+              currentDesignation: draft.general.present_designation_grade_pay || prev.currentDesignation,
+              promotionDesignation: draft.general.promotion_designation_due_date || prev.promotionDesignation,
             }));
           }
 
@@ -370,37 +374,37 @@ export default function FacultyAppraisalForm() {
           }
 
           if (draft.pbas) {
-            if (draft.pbas.student_feedback) {
-              setStudentFeedback(draft.pbas.student_feedback.map(f => ({
+            if (draft.pbas.student_feedback || draft.pbas.students_feedback) {
+              setStudentFeedback((draft.pbas.student_feedback || draft.pbas.students_feedback).map(f => ({
                 semester: f.semester || "",
-                courseCode: f.course_code || "",
-                courseName: f.course_name || "",
-                averageScore: f.feedback_score || "",
-                enclosureNo: f.enclosure_no || ""
+                courseCode: f.course_code || f.code || "",
+                courseName: f.course_name || f.course || "",
+                averageScore: f.feedback_score || f.average || "",
+                enclosureNo: f.enclosure_no || f.enclosure || ""
               })));
             }
             if (draft.pbas.departmental_activities) {
               setDepartmentalActivities(draft.pbas.departmental_activities.map(d => ({
                 activity: d.activity || "",
                 semester: d.semester || "",
-                credit: d.credits_claimed || "",
-                enclosureNo: d.enclosure_no || ""
+                credit: d.credits_claimed || d.credit || "",
+                enclosureNo: d.enclosure_no || d.enclosure || ""
               })));
             }
             if (draft.pbas.institute_activities) {
               setInstituteActivities(draft.pbas.institute_activities.map(i => ({
                 activity: i.activity || "",
                 semester: i.semester || "",
-                credit: i.credits_claimed || "",
-                enclosureNo: i.enclosure_no || ""
+                credit: i.credits_claimed || i.credit || "",
+                enclosureNo: i.enclosure_no || i.enclosure || ""
               })));
             }
             if (draft.pbas.society_activities) {
               setSocietyActivities(draft.pbas.society_activities.map(s => ({
                 activity: s.activity || "",
                 semester: s.semester || "",
-                credit: s.credits_claimed || "",
-                enclosureNo: s.enclosure_no || ""
+                credit: s.credits_claimed || s.credit || "",
+                enclosureNo: s.enclosure_no || s.enclosure || ""
               })));
             }
 
@@ -532,7 +536,7 @@ export default function FacultyAppraisalForm() {
     return {
       academic_year: generalInfo.academicYear,
       semester: "SEM_1",
-      form_type: "FACULTY",
+      form_type: "PBAS",
 
       appraisal_data: {
         submit_action: submitAction,
@@ -540,16 +544,25 @@ export default function FacultyAppraisalForm() {
         general: {
           faculty_name: generalInfo.facultyName,
           designation: generalInfo.designation,
-          department: generalInfo.department
+          department: generalInfo.department,
+          communication_address: generalInfo.communicationAddress,
+          present_designation_grade_pay: `${generalInfo.currentDesignation} / ${generalInfo.payLevel}`.trim(),
+          promotion_designation_due_date: `${generalInfo.promotionDesignation} ${generalInfo.promotionDate || ""} ${generalInfo.eligibilityDate || ""}`.trim(),
+          assessment_period: generalInfo.academicYear
         },
 
         teaching: {
           total_classes_assigned: totalAssigned,
           classes_taught: totalTaught,
           courses: teachingActivities.map(t => ({
+            semester: t.semester,
             course_code: t.courseCode,
+            course_name: t.courseName,
+            scheduled_classes: Number(t.totalClassesAssigned),
+            held_classes: Number(t.classesConducted),
             total_classes_assigned: Number(t.totalClassesAssigned),
-            classes_taught: Number(t.classesConducted)
+            classes_taught: Number(t.classesConducted),
+            enclosure_no: t.enclosureNo || ""
           }))
         },
 
@@ -585,19 +598,27 @@ export default function FacultyAppraisalForm() {
             return {
               semester: t.semester,
               course: `${t.courseName} (${t.courseCode})`,
+              course_code: t.courseCode,
+              course_name: t.courseName,
               scheduled: assigned,
+              scheduled_classes: assigned,
               held: conducted,
+              held_classes: conducted,
               points: parseFloat(points.toFixed(2)),
-              enclosure: t.enclosureNo || ""
+              enclosure: t.enclosureNo || "",
+              enclosure_no: t.enclosureNo || ""
             };
           }),
 
           student_feedback: studentFeedback.map(f => ({
             semester: f.semester,
             course: `${f.courseName} (${f.courseCode})`,
+            course_code: f.courseCode,
+            course_name: f.courseName,
             average: Number(f.averageScore),
-            feedback_score: Number(f.averageScore), // For scoring engine compatibility
-            enclosure: f.enclosureNo || ""
+            feedback_score: Number(f.averageScore),
+            enclosure: f.enclosureNo || "",
+            enclosure_no: f.enclosureNo || ""
           })),
 
           departmental_activities: departmentalActivities.map(a => ({
@@ -605,7 +626,9 @@ export default function FacultyAppraisalForm() {
             activity: a.activity,
             criteria: a.criteria,
             credit: Number(a.credit),
-            enclosure: a.enclosureNo || ""
+            credits_claimed: Number(a.credit),
+            enclosure: a.enclosureNo || "",
+            enclosure_no: a.enclosureNo || ""
           })),
 
           institute_activities: instituteActivities.map(a => ({
@@ -771,129 +794,115 @@ export default function FacultyAppraisalForm() {
   };
 
   const buildResearchEntries = () => {
-    const counts = {};
+    const entriesMap = {};
+    const upsert = (type, title = "", year = "", enclosureNo = "", countInc = 1) => {
+      if (!type) return;
+      if (!entriesMap[type]) {
+        entriesMap[type] = {
+          type,
+          count: 0,
+          title: "",
+          year: "",
+          enclosure_no: "",
+          _titles: []
+        };
+      }
+      entriesMap[type].count += Number(countInc || 1);
+      if (title) entriesMap[type]._titles.push(String(title).trim());
+      if (!entriesMap[type].year && year) entriesMap[type].year = year;
+      if (!entriesMap[type].enclosure_no && enclosureNo) entriesMap[type].enclosure_no = enclosureNo;
+    };
 
-    // Research Papers
-    const journalPapers = research.papers.filter(p => p.title).length;
-    if (journalPapers > 0) counts.journal_papers = journalPapers;
+    research.papers.forEach((p) => {
+      if (!p.title) return;
+      upsert("journal_papers", p.title, p.year, p.enclosureNo, 1);
+    });
 
-    // Publications
-    research.publications.forEach(p => {
-      if (!p.type || !p.publisherType) return;
-
-      if (p.type === "Book" && p.publisherType === "International") {
-        counts.book_international = (counts.book_international || 0) + 1;
-      }
-      if (p.type === "Book" && p.publisherType === "National") {
-        counts.book_national = (counts.book_national || 0) + 1;
-      }
-      if (p.type === "Chapter") {
-        counts.edited_book_chapter = (counts.edited_book_chapter || 0) + 1;
-      }
-      if (p.type === "Editor" && p.publisherType === "International") {
-        counts.editor_book_international = (counts.editor_book_international || 0) + 1;
-      }
-      if (p.type === "Editor" && p.publisherType === "National") {
-        counts.editor_book_national = (counts.editor_book_national || 0) + 1;
-      }
+    research.publications.forEach((p) => {
+      if (!p.type) return;
+      if (p.type !== "Translation" && !p.publisherType) return;
+      const title = p.title || p.type;
+      if (p.type === "Book" && p.publisherType === "International") upsert("book_international", title, p.year, p.enclosureNo, 1);
+      if (p.type === "Book" && p.publisherType === "National") upsert("book_national", title, p.year, p.enclosureNo, 1);
+      if (p.type === "Chapter") upsert("edited_book_chapter", title, p.year, p.enclosureNo, 1);
+      if (p.type === "Editor" && p.publisherType === "International") upsert("editor_book_international", title, p.year, p.enclosureNo, 1);
+      if (p.type === "Editor" && p.publisherType === "National") upsert("editor_book_national", title, p.year, p.enclosureNo, 1);
       if (p.type === "Translation") {
-        counts.translation_book = (counts.translation_book || 0) + 1;
+        if (p.translationType === "Book") upsert("translation_book", title, p.year, p.enclosureNo, 1);
+        else upsert("translation_chapter_or_paper", title, p.year, p.enclosureNo, 1);
       }
     });
 
-    // Research Projects
-    research.projects.forEach(p => {
+    research.projects.forEach((p) => {
+      const label = `${p.status || ""} ${p.amountSlab || ""} ${p.role || ""}`.trim();
       if (p.status === "Completed") {
-        if (p.amountSlab === ">10L") {
-          counts.project_completed_gt_10_lakhs =
-            (counts.project_completed_gt_10_lakhs || 0) + 1;
-        } else {
-          counts.project_completed_lt_10_lakhs =
-            (counts.project_completed_lt_10_lakhs || 0) + 1;
-        }
+        if (p.amountSlab === ">10L") upsert("project_completed_gt_10_lakhs", label, "", p.enclosureNo, 1);
+        else upsert("project_completed_lt_10_lakhs", label, "", p.enclosureNo, 1);
       } else if (p.status === "Ongoing") {
-        if (p.amountSlab === ">10L") {
-          counts.project_ongoing_gt_10_lakhs =
-            (counts.project_ongoing_gt_10_lakhs || 0) + 1;
-        } else {
-          counts.project_ongoing_lt_10_lakhs =
-            (counts.project_ongoing_lt_10_lakhs || 0) + 1;
-        }
+        if (p.amountSlab === ">10L") upsert("project_ongoing_gt_10_lakhs", label, "", p.enclosureNo, 1);
+        else upsert("project_ongoing_lt_10_lakhs", label, "", p.enclosureNo, 1);
       }
     });
 
-    // Research Guidance
-    research.guidance.forEach(g => {
-      if (g.degree === "PhD" && g.status === "Awarded") {
-        counts.phd_awarded = (counts.phd_awarded || 0) + Number(g.count || 0);
-      }
-      if (g.degree === "PhD" && g.status === "Submitted") {
-        counts.mphil_submitted = (counts.mphil_submitted || 0) + Number(g.count || 0);
-      }
-      if (g.degree === "PG") {
-        counts.pg_dissertation_awarded = (counts.pg_dissertation_awarded || 0) + Number(g.count || 0);
-      }
+    research.guidance.forEach((g) => {
+      const count = Number(g.count || 0) || 1;
+      const label = `${g.degree || ""} ${g.status || ""}`.trim();
+      if (g.degree === "PhD" && g.status === "Awarded") upsert("phd_awarded", label, g.year, g.enclosureNo, count);
+      if (g.degree === "PhD" && g.status === "Submitted") upsert("mphil_submitted", label, g.year, g.enclosureNo, count);
+      if (g.degree === "PG") upsert("pg_dissertation_awarded", label, g.year, g.enclosureNo, count);
     });
 
-    // MOOCs
-    research.moocsIct.forEach(m => {
+    research.moocsIct.forEach((m) => {
+      const label = `${m.category || ""} ${m.role || ""}`.trim();
       if (m.category === "MOOC") {
-        if (m.role === "Course Coordinator") counts.mooc_course_coordinator = (counts.mooc_course_coordinator || 0) + 1;
-        else counts.mooc_complete_4_quadrant = (counts.mooc_complete_4_quadrant || 0) + 1;
+        if (m.role === "Course Coordinator") upsert("mooc_course_coordinator", label, m.year, m.enclosureNo, 1);
+        else upsert("mooc_complete_4_quadrant", label, m.year, m.enclosureNo, 1);
       }
       if (m.category === "E-Content") {
-        counts.econtent_complete_course = (counts.econtent_complete_course || 0) + 1;
+        if (m.role === "Per Module") upsert("econtent_4quadrant_per_module", label, m.year, m.enclosureNo, 1);
+        else if (m.role === "Contribution") upsert("econtent_module_contribution", label, m.year, m.enclosureNo, 1);
+        else if (m.role === "Editor") upsert("econtent_editor", label, m.year, m.enclosureNo, 1);
+        else upsert("econtent_complete_course", label, m.year, m.enclosureNo, 1);
       }
-      if (m.category === "Curriculum Design") {
-        counts.new_curriculum = (counts.new_curriculum || 0) + 1;
-      }
+      if (m.category === "Curriculum Design") upsert("new_curriculum", label, m.year, m.enclosureNo, 1);
     });
 
-    // Consultancy
-    research.consultancyPolicy.forEach(c => {
-      if (c.category === "Consultancy") {
-        counts.consultancy = (counts.consultancy || 0) + 1;
-      }
+    research.consultancyPolicy.forEach((c) => {
+      const label = `${c.category || ""} ${c.level || ""}`.trim();
+      if (c.category === "Consultancy") upsert("consultancy", label, "", c.enclosureNo, 1);
       if (c.category === "Policy Document") {
-        if (c.level === "International") counts.policy_international = (counts.policy_international || 0) + 1;
-        else counts.policy_national = (counts.policy_national || 0) + 1;
+        if (c.level === "International") upsert("policy_international", label, "", c.enclosureNo, 1);
+        else if (c.level === "National") upsert("policy_national", label, "", c.enclosureNo, 1);
+        else if (c.level === "State") upsert("policy_state", label, "", c.enclosureNo, 1);
       }
     });
 
-    // Awards
-    research.awards.forEach(a => {
-      if (a.level === "International") {
-        counts.award_international = (counts.award_international || 0) + 1;
-      } else {
-        counts.award_national = (counts.award_national || 0) + 1;
-      }
+    research.awards.forEach((a) => {
+      const label = a.title || a.level || "Award";
+      if (a.level === "International") upsert("award_international", label, a.year, a.enclosureNo, 1);
+      else upsert("award_national", label, a.year, a.enclosureNo, 1);
     });
 
-    // Patents
-    research.patents.forEach(p => {
-      if (p.type === "International") {
-        counts.patent_international = (counts.patent_international || 0) + 1;
-      } else {
-        counts.patent_national = (counts.patent_national || 0) + 1;
-      }
+    research.patents.forEach((p) => {
+      const label = `${p.type || ""} ${p.status || ""}`.trim();
+      if (p.type === "International") upsert("patent_international", label, "", p.enclosureNo, 1);
+      else upsert("patent_national", label, "", p.enclosureNo, 1);
     });
 
-    // Invited Talks
-    research.invitedTalks.forEach(t => {
-      if (t.level === "International Abroad") {
-        counts.invited_lecture_international_abroad = (counts.invited_lecture_international_abroad || 0) + 1;
-      } else if (t.level === "International India") {
-        counts.invited_lecture_international_india = (counts.invited_lecture_international_india || 0) + 1;
-      } else if (t.level === "National") {
-        counts.invited_lecture_national = (counts.invited_lecture_national || 0) + 1;
-      } else {
-        counts.invited_lecture_state_university = (counts.invited_lecture_state_university || 0) + 1;
-      }
+    research.invitedTalks.forEach((t) => {
+      const label = `${t.role || ""} ${t.level || ""}`.trim();
+      if (t.level === "International Abroad") upsert("invited_lecture_international_abroad", label, t.year, t.enclosureNo, 1);
+      else if (t.level === "International India") upsert("invited_lecture_international_india", label, t.year, t.enclosureNo, 1);
+      else if (t.level === "National") upsert("invited_lecture_national", label, t.year, t.enclosureNo, 1);
+      else upsert("invited_lecture_state_university", label, t.year, t.enclosureNo, 1);
     });
 
-    return Object.entries(counts).map(([type, count]) => ({
-      type,
-      count
+    return Object.values(entriesMap).map((entry) => ({
+      type: entry.type,
+      count: entry.count,
+      title: entry._titles.length ? Array.from(new Set(entry._titles)).join("; ") : "",
+      year: entry.year || "",
+      enclosure_no: entry.enclosure_no || ""
     }));
   };
 
@@ -2174,6 +2183,17 @@ export default function FacultyAppraisalForm() {
                     <option value="National">National</option>
                   </select>
 
+                  {row.type === "Translation" && (
+                    <select
+                      value={row.translationType || ""}
+                      onChange={e => handleResearchChange("publications", index, "translationType", e.target.value)}
+                    >
+                      <option value="">Translation Type</option>
+                      <option value="Chapter/Research Paper">Chapter / Research Paper</option>
+                      <option value="Book">Book</option>
+                    </select>
+                  )}
+
                   <input placeholder="Title"
                     value={row.title}
                     onChange={e => handleResearchChange("publications", index, "title", e.target.value)}
@@ -2196,7 +2216,7 @@ export default function FacultyAppraisalForm() {
               <button className="btn-add" onClick={() =>
                 addResearchRow("publications", {
                   type: "", title: "",
-                  publisherType: "", year: "",
+                  publisherType: "", translationType: "", year: "",
                   enclosureNo: ""
                 })
               }>
@@ -2405,6 +2425,9 @@ export default function FacultyAppraisalForm() {
                     <option value="Content Developer">Content Developer</option>
                     <option value="Module Writer">Module Writer</option>
                     <option value="Subject Expert">Subject Expert</option>
+                    <option value="Per Module">Per Module</option>
+                    <option value="Contribution">Contribution</option>
+                    <option value="Editor">Editor</option>
                   </select>
 
                   <input
@@ -2770,3 +2793,5 @@ export default function FacultyAppraisalForm() {
     </div >
   );
 }
+
+

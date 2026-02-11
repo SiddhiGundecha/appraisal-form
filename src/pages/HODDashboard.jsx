@@ -46,13 +46,9 @@ export default function HODDashboard() {
         const res = await API.get("hod/appraisals/");
         const data = res.data || [];
 
-        const pending = data.filter(
-          (a) => a.status === "SUBMITTED" || a.status === "REVIEWED_BY_HOD"
-        );
-
-        const processed = data.filter(
-          (a) => ["HOD_APPROVED", "REVIEWED_BY_PRINCIPAL", "PRINCIPAL_APPROVED", "FINALIZED", "RETURNED_BY_HOD", "RETURNED_BY_PRINCIPAL"].includes(a.status)
-        );
+        const pendingStatuses = ["SUBMITTED", "REVIEWED_BY_HOD"];
+        const pending = data.filter((a) => pendingStatuses.includes(a.status));
+        const processed = data.filter((a) => !pendingStatuses.includes(a.status));
 
         setSubmissions({ pending, processed });
 
@@ -243,6 +239,29 @@ export default function HODDashboard() {
     }
   };
 
+  const downloadPdf = async (url, filename) => {
+    try {
+      const authToken =
+        localStorage.getItem("access") || sessionStorage.getItem("access");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to download PDF.");
+    }
+  };
+
 
 
   /* ================= REVIEW SCREEN ================= */
@@ -388,27 +407,8 @@ export default function HODDashboard() {
               <div style={{ marginTop: '12px', padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' }}>
                 <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#166534', fontSize: '14px' }}>📄 Download Your Appraisal PDFs:</p>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <a
-                    href={`http://127.0.0.1:8000/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/sppu-enhanced/`}
-                    download
-                    style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
-                  >
-                    📄 SPPU PDF
-                  </a>
-                  <a
-                    href={`http://127.0.0.1:8000/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/pbas-enhanced/`}
-                    download
-                    style={{ padding: '8px 16px', background: '#8b5cf6', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
-                  >
-                    📄 PBAS PDF
-                  </a>
-                  <a
-                    href={`http://127.0.0.1:8000/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/comprehensive/`}
-                    download
-                    style={{ padding: '8px 16px', background: '#10b981', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
-                  >
-                    📄 Comprehensive PDF
-                  </a>
+                  <button type="button" onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/sppu-enhanced/`, `SPPU_${hodOwnAppraisal.academicYear}.pdf`)} style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>SPPU PDF</button>
+                  <button type="button" onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/pbas-enhanced/`, `PBAS_${hodOwnAppraisal.academicYear}.pdf`)} style={{ padding: '8px 16px', background: '#8b5cf6', color: 'white', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>PBAS PDF</button>
                 </div>
               </div>
             )}
@@ -462,27 +462,8 @@ export default function HODDashboard() {
                   <div style={{ marginTop: '10px' }}>
                     <p style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '13px' }}>Download PDFs:</p>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      <a
-                        href={`http://127.0.0.1:8000/api/appraisal/${sub.appraisal_id}/pdf/sppu-enhanced/`}
-                        download
-                        style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
-                      >
-                        📄 SPPU
-                      </a>
-                      <a
-                        href={`http://127.0.0.1:8000/api/appraisal/${sub.appraisal_id}/pdf/pbas-enhanced/`}
-                        download
-                        style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
-                      >
-                        📄 PBAS
-                      </a>
-                      <a
-                        href={`http://127.0.0.1:8000/api/appraisal/${sub.appraisal_id}/pdf/comprehensive/`}
-                        download
-                        style={{ padding: '6px 12px', background: '#10b981', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
-                      >
-                        📄 Comprehensive
-                      </a>
+                      <button type="button" onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${sub.appraisal_id}/pdf/sppu-enhanced/`, `SPPU_${sub.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>SPPU</button>
+                      <button type="button" onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${sub.appraisal_id}/pdf/pbas-enhanced/`, `PBAS_${sub.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>PBAS</button>
                     </div>
                   </div>
                 )}
@@ -494,3 +475,5 @@ export default function HODDashboard() {
     </div>
   );
 }
+
+

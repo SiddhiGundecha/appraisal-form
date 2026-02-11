@@ -97,6 +97,29 @@ export default function PrincipalDashboard() {
     processed: [],
   });
 
+  const downloadPdf = async (url, filename) => {
+    try {
+      const authToken =
+        localStorage.getItem("access") || sessionStorage.getItem("access");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to download PDF.");
+    }
+  };
+
   /* ================= FETCH PRINCIPAL APPRAISALS ================= */
   useEffect(() => {
     const fetchAppraisals = async () => {
@@ -400,27 +423,8 @@ export default function PrincipalDashboard() {
                     <div style={{ marginTop: '10px' }}>
                       <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>Download PDFs:</p>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <a 
-                          href={`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/sppu-enhanced/`}
-                          download
-                          style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
-                        >
-                          📄 SPPU PDF
-                        </a>
-                        <a 
-                          href={`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/pbas-enhanced/`}
-                          download
-                          style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
-                        >
-                          📄 PBAS PDF
-                        </a>
-                        <a 
-                          href={`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/comprehensive/`}
-                          download
-                          style={{ padding: '6px 12px', background: '#10b981', color: 'white', borderRadius: '4px', textDecoration: 'none', fontSize: '12px', fontWeight: '500' }}
-                        >
-                          📄 Comprehensive PDF
-                        </a>
+                        <button type="button" onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/sppu-enhanced/`, `SPPU_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>SPPU PDF</button>
+                        <button type="button" onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/pbas-enhanced/`, `PBAS_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>PBAS PDF</button>
                       </div>
                     </div>
                   )}
@@ -433,3 +437,5 @@ export default function PrincipalDashboard() {
     </div>
   );
 }
+
+

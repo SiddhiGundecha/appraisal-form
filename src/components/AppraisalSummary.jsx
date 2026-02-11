@@ -1,5 +1,6 @@
 
 import React from "react";
+import { formatKeyLabel } from "../utils/textFormatters";
 
 /**
  * A reusable component to display appraisal form data in a read-only format.
@@ -28,6 +29,12 @@ export default function AppraisalSummary({ data }) {
     const socActivities = data.societyActivities || (data.pbas ? data.pbas.society_activities : []) || [];
     const feedback = data.studentFeedback || (data.pbas ? data.pbas.student_feedback : []) || [];
 
+    const renderCourseName = (row) => {
+        const name = row.courseName || row.course_name || "";
+        const code = row.courseCode || row.course_code || "";
+        return code ? `${name} (${code})` : name || "-";
+    };
+
     return (
         <div className="appraisal-summary">
             <style>{`
@@ -41,7 +48,7 @@ export default function AppraisalSummary({ data }) {
         .info-item span { color: #111; }
       `}</style>
 
-            <h3>Appraisal Form Summary</h3>
+            <h3>Appraisal Summary</h3>
 
             {/* 1. GENERAL INFO */}
             <h4>General Information</h4>
@@ -60,17 +67,17 @@ export default function AppraisalSummary({ data }) {
                         <tr>
                             <th>Semester</th>
                             <th>Course</th>
-                            <th>Assigned</th>
-                            <th>Conducted</th>
+                            <th>Scheduled Classes</th>
+                            <th>Held Classes</th>
                         </tr>
                     </thead>
                     <tbody>
                         {teaching.courses.map((t, i) => (
                             <tr key={i}>
                                 <td>{t.semester}</td>
-                                <td>{t.courseName || t.course_name} ({t.courseCode || t.course_code})</td>
-                                <td>{t.totalClassesAssigned || t.total_classes_assigned}</td>
-                                <td>{t.classesConducted || t.held_classes}</td>
+                                <td>{renderCourseName(t)}</td>
+                                <td>{t.totalClassesAssigned || t.total_classes_assigned || t.scheduled_classes || "-"}</td>
+                                <td>{t.classesConducted || t.held_classes || "-"}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -112,15 +119,31 @@ export default function AppraisalSummary({ data }) {
                 </table>
             ) : <p className="text-sm text-gray-500">None</p>}
 
+            <h5>Society Activities</h5>
+            {socActivities.length > 0 ? (
+                <table className="summary-table">
+                    <thead><tr><th>Activity</th><th>Credit</th><th>Sem</th></tr></thead>
+                    <tbody>
+                        {socActivities.map((row, i) => (
+                            <tr key={i}>
+                                <td>{row.activity}</td>
+                                <td>{row.credit || row.credits_claimed}</td>
+                                <td>{row.semester}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : <p className="text-sm text-gray-500">None</p>}
+
             {/* STUDENT FEEDBACK */}
             <h4>Student Feedback</h4>
             {feedback.length > 0 ? (
                 <table className="summary-table">
-                    <thead><tr><th>Course</th><th>Score</th></tr></thead>
+                    <thead><tr><th>Course</th><th>Feedback Score</th></tr></thead>
                     <tbody>
                         {feedback.map((f, i) => (
                             <tr key={i}>
-                                <td>{f.courseName || f.course_name}</td>
+                                <td>{renderCourseName(f)}</td>
                                 <td>{f.averageScore || f.feedback_score}</td>
                             </tr>
                         ))}
@@ -157,13 +180,13 @@ export default function AppraisalSummary({ data }) {
       */}
             {research.entries && research.entries.length > 0 && (
                 <>
-                    <h5>Research Entries (Submitted)</h5>
+                    <h5>Research Entries</h5>
                     <table className="summary-table">
-                        <thead><tr><th>Type</th><th>Title/Details</th><th>Year</th></tr></thead>
+                        <thead><tr><th>Category</th><th>Title / Details</th><th>Year</th></tr></thead>
                         <tbody>
                             {research.entries.map((e, i) => (
                                 <tr key={i}>
-                                    <td>{e.type}</td>
+                                    <td>{formatKeyLabel(e.type)}</td>
                                     <td>{e.title || "Count: " + e.count}</td>
                                     <td>{e.year}</td>
                                 </tr>

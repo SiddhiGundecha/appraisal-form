@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "../../styles/dashboard.css";
+import { formatStatus } from "../../utils/textFormatters";
 
 export default function FacultyDashboard() {
   const navigate = useNavigate();
@@ -62,6 +63,30 @@ export default function FacultyDashboard() {
       "DRAFT",
       "Changes Requested",
     ].includes(appraisal.status);
+  const statusClassName = appraisal?.status
+    ? formatStatus(appraisal.status).toLowerCase().replace(/\s+/g, "-")
+    : "draft";
+
+  const downloadPdf = async (url, filename) => {
+    try {
+      const token = localStorage.getItem("access");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      alert("Failed to download PDF.");
+    }
+  };
 
   /* ================= UI ================= */
   return (
@@ -130,8 +155,8 @@ export default function FacultyDashboard() {
               <div className="history-item">
                 <div className="history-info">
                   <span className="history-year">AY {appraisal.academic_year}</span>
-                  <span className={`history-status ${appraisal.status.toLowerCase().replace(/_/g, "-")}`}>
-                    {appraisal.status.replace(/_/g, " ")}
+                  <span className={`history-status ${statusClassName}`}>
+                    {formatStatus(appraisal.status)}
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -174,29 +199,22 @@ export default function FacultyDashboard() {
               {/* PDF Download Buttons for Finalized Appraisals */}
               {appraisal.status === "FINALIZED" && (
                 <div style={{ marginTop: '12px', padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' }}>
-                  <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#166534', fontSize: '14px' }}>📄 Download Your Appraisal PDFs:</p>
+                  <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#166534', fontSize: '14px' }}>Download Your Appraisal PDFs:</p>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <a
-                      href={`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/sppu-enhanced/`}
-                      download
-                      style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
+                    <button
+                      type="button"
+                      onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/sppu-enhanced/`, `SPPU_${appraisal.academic_year}.pdf`)}
+                      style={{ padding: "8px 16px", background: "#3b82f6", color: "white", borderRadius: "6px", border: "none", fontSize: "13px", fontWeight: "500", cursor: "pointer" }}
                     >
-                      📄 SPPU PDF
-                    </a>
-                    <a
-                      href={`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/pbas-enhanced/`}
-                      download
-                      style={{ padding: '8px 16px', background: '#8b5cf6', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
+                      SPPU PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/pbas-enhanced/`, `PBAS_${appraisal.academic_year}.pdf`)}
+                      style={{ padding: "8px 16px", background: "#8b5cf6", color: "white", borderRadius: "6px", border: "none", fontSize: "13px", fontWeight: "500", cursor: "pointer" }}
                     >
-                      📄 PBAS PDF
-                    </a>
-                    <a
-                      href={`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/comprehensive/`}
-                      download
-                      style={{ padding: '8px 16px', background: '#10b981', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}
-                    >
-                      📄 Comprehensive PDF
-                    </a>
+                      PBAS PDF
+                    </button>
                   </div>
                 </div>
               )}
@@ -207,3 +225,5 @@ export default function FacultyDashboard() {
     </div>
   );
 }
+
+

@@ -7,6 +7,8 @@ const API = axios.create({
 // 🔥 THIS PART IS CRITICAL
 API.interceptors.request.use((config) => {
   const token =
+    localStorage.getItem("access") ||
+    sessionStorage.getItem("access") ||
     localStorage.getItem("access_token") ||
     sessionStorage.getItem("access_token");
 
