@@ -2,25 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/FacultyAppraisalStatus.css";
 
-/* 🔁 TURN THIS OFF WHEN BACKEND IS READY */
 const USE_DUMMY_DATA = false;
 
 export default function FacultyAppraisalStatus() {
   const navigate = useNavigate();
-
-  // ✅ FIX: use plain string, NOT API constant
   const [activeTab, setActiveTab] = useState("under-review");
   const [loading, setLoading] = useState(!USE_DUMMY_DATA);
   const [error, setError] = useState(null);
 
-  /* ================= STATE ================= */
   const [appraisalData, setAppraisalData] = useState({
     underReview: [],
     approved: [],
     changesRequested: [],
   });
 
-  /* ================= DUMMY DATA ================= */
   const dummyData = {
     underReview: [
       {
@@ -35,7 +30,6 @@ export default function FacultyAppraisalStatus() {
     changesRequested: [],
   };
 
-  /* ================= DATA LOADING ================= */
   useEffect(() => {
     if (USE_DUMMY_DATA) {
       setAppraisalData(dummyData);
@@ -49,24 +43,17 @@ export default function FacultyAppraisalStatus() {
         setError(null);
 
         const token = localStorage.getItem("access");
+        const response = await fetch("http://127.0.0.1:8000/api/faculty/appraisal/status/", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/faculty/appraisal/status/",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Unauthorized");
-        }
+        if (!response.ok) throw new Error("Unauthorized");
 
         const data = await response.json();
-
         setAppraisalData({
           underReview: data.under_review || [],
           approved: data.approved || [],
@@ -83,7 +70,27 @@ export default function FacultyAppraisalStatus() {
     fetchStatus();
   }, []);
 
-  /* ================= RENDER ================= */
+  const downloadFile = async (url, filename) => {
+    try {
+      const token = localStorage.getItem("access");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      alert("Failed to download PDF. It might not be generated yet.");
+    }
+  };
+
   const renderEmpty = (msg) => (
     <div className="empty-state">
       <p>{msg}</p>
@@ -101,87 +108,85 @@ export default function FacultyAppraisalStatus() {
     };
 
     const list = dataMap[activeTab];
+    if (!list || list.length === 0) return renderEmpty("No records found");
 
-    if (!list || list.length === 0) {
-      return renderEmpty("No records found");
-    }
+    return list.map((item) => {
+      const canDownload =
+        activeTab === "approved" &&
+        (item.download_available === true ||
+          ["FINALIZED", "PRINCIPAL_APPROVED", "COMPLETED"].includes(item.workflow_state || item.status));
 
-    return list.map((item) => (
-      <div key={item.id} className="status-card">
-        <div className="status-card-header">
-          <h3>Academic Year {item.academic_year}</h3>
-        </div>
+      const sppuUrl = item.download_urls?.sppu || `/api/appraisal/${item.id}/download/`;
+      const pbasUrl = item.download_urls?.pbas || `/api/appraisal/${item.id}/download/?pdf_type=PBAS`;
 
-        <div className="status-card-body">
-          <div className="status-info-grid">
-            <div className="status-info-item">
-              <span className="status-info-label">Submitted Date</span>
-              <span className="status-info-value">
-                {item.submitted_date || "—"}
-              </span>
-            </div>
-
-            <div className="status-info-item">
-              <span className="status-info-label">Current Level</span>
-              <span className="status-info-value">
-                {item.current_level || "—"}
-              </span>
-            </div>
-
-            <div className="status-info-item">
-              <span className="status-info-label">Status</span>
-              <span className={`status-badge ${activeTab}`}>
-                {item.status}
-              </span>
-            </div>
+      return (
+        <div key={item.id} className="status-card">
+          <div className="status-card-header">
+            <h3>Academic Year {item.academic_year}</h3>
           </div>
 
-          {activeTab === "changes-requested" && item.remarks && (
-            <div className="remarks-section">
-              <h4>Remarks</h4>
-              <p>{item.remarks}</p>
+          <div className="status-card-body">
+            <div className="status-info-grid">
+              <div className="status-info-item">
+                <span className="status-info-label">Submitted Date</span>
+                <span className="status-info-value">{item.submitted_date || "-"}</span>
+              </div>
+
+              <div className="status-info-item">
+                <span className="status-info-label">Current Level</span>
+                <span className="status-info-value">{item.current_level || "-"}</span>
+              </div>
+
+              <div className="status-info-item">
+                <span className="status-info-label">Status</span>
+                <span className={`status-badge ${activeTab}`}>{item.status}</span>
+              </div>
             </div>
-          )}
 
-          {activeTab === "changes-requested" && (
-            <button
-              className="edit-btn"
-              onClick={() => navigate(editPath)}
-            >
-              Edit & Re-submit
-            </button>
-          )}
+            {activeTab === "changes-requested" && item.remarks && (
+              <div className="remarks-section">
+                <h4>Remarks</h4>
+                <p>{item.remarks}</p>
+              </div>
+            )}
 
-          {activeTab === "approved" && ["FINALIZED", "APPROVED", "PRINCIPAL_APPROVED", "COMPLETED"].includes(item.status) && (
-            <button
-              className="edit-btn"
-              style={{ background: '#059669', marginTop: '12px' }}
-              onClick={async () => {
-                try {
-                  const token = localStorage.getItem("access");
-                  const res = await fetch(`http://127.0.0.1:8000/api/appraisal/${item.id}/download/`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                  });
-                  if (!res.ok) throw new Error("Download failed");
-                  const blob = await res.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `Appraisal_${item.academic_year}.pdf`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                } catch (e) {
-                  alert("Failed to download PDF. It might not be generated yet.");
-                }
-              }}
-            >
-              📥 Download PDF
-            </button>
-          )}
+            {activeTab === "changes-requested" && (
+              <button className="edit-btn" onClick={() => navigate(editPath)}>
+                Edit & Re-submit
+              </button>
+            )}
+
+            {canDownload && (
+              <div className="action-buttons">
+                <button
+                  className="download-btn"
+                  onClick={() =>
+                    downloadFile(
+                      `http://127.0.0.1:8000${sppuUrl}`,
+                      `SPPU_${item.academic_year}.pdf`
+                    )
+                  }
+                >
+                  Download SPPU
+                </button>
+                <button
+                  className="download-btn"
+                  style={{ backgroundColor: "#6d28d9" }}
+                  onClick={() =>
+                    downloadFile(
+                      `http://127.0.0.1:8000${pbasUrl}`,
+                      `PBAS_${item.academic_year}.pdf`
+                    )
+                  }
+                >
+                  Download PBAS
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    ));
+      );
+    });
   };
 
   const isHOD = localStorage.getItem("role") === "HOD";
@@ -191,7 +196,7 @@ export default function FacultyAppraisalStatus() {
   return (
     <div className="status-page">
       <button className="back-btn" onClick={() => navigate(backPath)}>
-        ← Back to Dashboard
+        Back to Dashboard
       </button>
 
       <div className="status-header-card">
@@ -204,22 +209,21 @@ export default function FacultyAppraisalStatus() {
           className={`status-tab ${activeTab === "under-review" ? "active" : ""}`}
           onClick={() => setActiveTab("under-review")}
         >
-          🟡 Under Review
+          Under Review
         </button>
 
         <button
           className={`status-tab ${activeTab === "approved" ? "active" : ""}`}
           onClick={() => setActiveTab("approved")}
         >
-          🟢 Approved
+          Approved
         </button>
 
         <button
-          className={`status-tab ${activeTab === "changes-requested" ? "active" : ""
-            }`}
+          className={`status-tab ${activeTab === "changes-requested" ? "active" : ""}`}
           onClick={() => setActiveTab("changes-requested")}
         >
-          🔴 Changes Requested
+          Changes Requested
         </button>
       </div>
 

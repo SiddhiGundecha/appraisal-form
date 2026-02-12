@@ -93,6 +93,10 @@ export default function HODDashboard() {
         }));
         // initialize local state if needed, or just use selectedSubmission
         if (res.data.verified_grade) setVerifiedGrade(res.data.verified_grade);
+        const hodReview = res.data?.appraisal_data?.hod_review || {};
+        setHodCommentsTable1(hodReview.comments_table1 || "");
+        setHodCommentsTable2(hodReview.comments_table2 || "");
+        setHodRemarksSuggestions(hodReview.remarks_suggestions || "");
       } catch (err) {
         console.error("Failed to fetch details", err);
       }
@@ -102,6 +106,9 @@ export default function HODDashboard() {
   }, [selectedSubmission?.appraisal_id]);
 
   const [verifiedGrade, setVerifiedGrade] = useState("");
+  const [hodCommentsTable1, setHodCommentsTable1] = useState("");
+  const [hodCommentsTable2, setHodCommentsTable2] = useState("");
+  const [hodRemarksSuggestions, setHodRemarksSuggestions] = useState("");
 
   /* ================= ACTIONS ================= */
   const handleStartReview = async () => {
@@ -142,7 +149,12 @@ export default function HODDashboard() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ verified_grade: verifiedGrade })
+          body: JSON.stringify({
+            verified_grade: verifiedGrade,
+            hod_comments_table1: hodCommentsTable1,
+            hod_comments_table2: hodCommentsTable2,
+            hod_remarks: hodRemarksSuggestions
+          })
         }
       );
 
@@ -151,6 +163,9 @@ export default function HODDashboard() {
       alert("Approved by HOD");
       setSelectedSubmission(null);
       setVerifiedGrade("");
+      setHodCommentsTable1("");
+      setHodCommentsTable2("");
+      setHodRemarksSuggestions("");
     } catch {
       alert("Approval failed");
     }
@@ -345,6 +360,39 @@ export default function HODDashboard() {
                       borderRadius: '4px',
                       border: '1px solid #ddd'
                     }}
+                  />
+                </div>
+
+                <div style={{ marginTop: '14px' }}>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                    Comments of HOD on Table 1
+                  </label>
+                  <textarea
+                    placeholder="Enter comments for Table 1..."
+                    value={hodCommentsTable1}
+                    onChange={(e) => setHodCommentsTable1(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ marginTop: '10px' }}>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                    Comments of HOD on Table 2
+                  </label>
+                  <textarea
+                    placeholder="Enter comments for Table 2..."
+                    value={hodCommentsTable2}
+                    onChange={(e) => setHodCommentsTable2(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ marginTop: '10px' }}>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                    Remarks and Suggestions
+                  </label>
+                  <textarea
+                    placeholder="Enter remarks and suggestions..."
+                    value={hodRemarksSuggestions}
+                    onChange={(e) => setHodRemarksSuggestions(e.target.value)}
                   />
                 </div>
               </div>
