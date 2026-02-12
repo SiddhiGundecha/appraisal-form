@@ -313,6 +313,7 @@ export default function FacultyAppraisalForm() {
           department: data.department || "",
           email: data.email || "",
           mobile: data.mobile_number || "",
+          dateOfJoining: (data.date_of_joining || data.date_joined || "").toString().split("T")[0],
         }));
       })
       .catch(err => console.error("Failed to fetch profile", err));
@@ -2793,5 +2794,6 @@ export default function FacultyAppraisalForm() {
     </div >
   );
 }
+
 
 
