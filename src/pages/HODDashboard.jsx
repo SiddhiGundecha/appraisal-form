@@ -86,7 +86,13 @@ export default function HODDashboard() {
     const fetchDetails = async () => {
       try {
         const res = await API.get(`appraisal/${selectedSubmission.appraisal_id}/`);
-        setSelectedSubmission((prev) => ({ ...prev, appraisal_data: res.data.appraisal_data }));
+        setSelectedSubmission((prev) => ({
+          ...prev,
+          appraisal_data: res.data.appraisal_data,
+          verified_grade: res.data.verified_grade // Load existing grade
+        }));
+        // initialize local state if needed, or just use selectedSubmission
+        if (res.data.verified_grade) setVerifiedGrade(res.data.verified_grade);
       } catch (err) {
         console.error("Failed to fetch details", err);
       }
@@ -94,6 +100,8 @@ export default function HODDashboard() {
 
     fetchDetails();
   }, [selectedSubmission?.appraisal_id]);
+
+  const [verifiedGrade, setVerifiedGrade] = useState("");
 
   /* ================= ACTIONS ================= */
   const handleStartReview = async () => {
@@ -120,12 +128,21 @@ export default function HODDashboard() {
   };
 
   const handleApprove = async () => {
+    // Validation for verified grade
+    if (!verifiedGrade) {
+      if (!window.confirm("You have not entered a Verified Grade. Proceed anyway?")) return;
+    }
+
     try {
       const res = await fetch(
         `http://127.0.0.1:8000/api/hod/appraisal/${selectedSubmission.appraisal_id}/approve/`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ verified_grade: verifiedGrade })
         }
       );
 
@@ -133,6 +150,7 @@ export default function HODDashboard() {
 
       alert("Approved by HOD");
       setSelectedSubmission(null);
+      setVerifiedGrade("");
     } catch {
       alert("Approval failed");
     }
@@ -289,11 +307,58 @@ export default function HODDashboard() {
             onChange={(e) => setRemarks(e.target.value)}
           />
 
-          {selectedSubmission.appraisal_data && (
-            <div className="form-data-view" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', maxHeight: '400px', overflowY: 'auto' }}>
-              <AppraisalSummary data={selectedSubmission.appraisal_data} />
-            </div>
-          )}
+          {/* VERIFIED GRADE INPUT */}
+          {
+            selectedSubmission.status === "REVIEWED_BY_HOD" && (
+              <div style={{ marginTop: '16px' }}>
+                <h3>Verified Grading</h3>
+                <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                  Enter the verified grade (e.g., 'Good', 'Satisfactory', 'Not Satisfactory') based on the assessment.
+                </p>
+                <select
+                  value={verifiedGrade}
+                  onChange={(e) => setVerifiedGrade(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    marginTop: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #ddd'
+                  }}
+                >
+                  <option value="">Select Grade...</option>
+                  <option value="Good">Good</option>
+                  <option value="Satisfactory">Satisfactory</option>
+                  <option value="Not Satisfactory">Not Satisfactory</option>
+                  {/* Add 'Outstanding' or others if required by user, sticking to image example */}
+                </select>
+                {/* Fallback text input if they want custom */}
+                <div style={{ marginTop: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Or type custom grade..."
+                    value={verifiedGrade}
+                    onChange={(e) => setVerifiedGrade(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ddd'
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          }
+
+
+          {
+            selectedSubmission.appraisal_data && (
+              <div className="form-data-view" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', maxHeight: '400px', overflowY: 'auto' }}>
+                <AppraisalSummary data={selectedSubmission.appraisal_data} />
+              </div>
+            )
+          }
 
 
           <div className="action-btn-row">
@@ -313,8 +378,8 @@ export default function HODDashboard() {
               Request Changes
             </button>
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
     );
   }
 
@@ -475,5 +540,3 @@ export default function HODDashboard() {
     </div>
   );
 }
-
-

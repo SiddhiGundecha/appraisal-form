@@ -40,14 +40,21 @@ export default function PrincipalDashboard() {
   };
 
   const handleApprove = async () => {
+    // Validation for verified grade (ONLY FOR HOD APPRAISALS)
+    if (selected.is_hod_appraisal && !verifiedGrade) {
+      if (!window.confirm("You have not entered a Verified Grade for this HOD Appraisal. Proceed anyway?")) return;
+    }
+
     try {
       const res = await fetch(
         `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/approve/`,
         {
           method: "POST",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({ verified_grade: verifiedGrade })
         }
       );
 
@@ -60,6 +67,7 @@ export default function PrincipalDashboard() {
         ...prev,
         status: "PRINCIPAL_APPROVED",
       }));
+      setVerifiedGrade("");
     } catch (err) {
       alert("Approval failed");
       console.error(err);
@@ -182,7 +190,12 @@ export default function PrincipalDashboard() {
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
-        setSelected((prev) => ({ ...prev, appraisal_data: data.appraisal_data }));
+        setSelected((prev) => ({
+          ...prev,
+          appraisal_data: data.appraisal_data,
+          verified_grade: data.verified_grade
+        }));
+        if (data.verified_grade) setVerifiedGrade(data.verified_grade);
       } catch (err) {
         console.error("Failed to fetch appraisal data", err);
       }
@@ -190,6 +203,8 @@ export default function PrincipalDashboard() {
 
     fetchDetails();
   }, [selected?.id]);
+
+  const [verifiedGrade, setVerifiedGrade] = useState("");
 
 
   /* ================= FINAL APPROVE ================= */
@@ -291,6 +306,46 @@ export default function PrincipalDashboard() {
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
           />
+
+          {/* VERIFIED GRADE INPUT (Only for HOD Appraisals) */}
+          {selected.status === "REVIEWED_BY_PRINCIPAL" && selected.is_hod_appraisal && (
+            <div style={{ marginTop: '16px' }}>
+              <h3>Verified Grading (HOD Appraisal)</h3>
+              <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                Enter the verified grade for this HOD.
+              </p>
+              <select
+                value={verifiedGrade}
+                onChange={(e) => setVerifiedGrade(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  marginTop: '8px',
+                  borderRadius: '4px',
+                  border: '1px solid #ddd'
+                }}
+              >
+                <option value="">Select Grade...</option>
+                <option value="Good">Good</option>
+                <option value="Satisfactory">Satisfactory</option>
+                <option value="Not Satisfactory">Not Satisfactory</option>
+              </select>
+              <div style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Or type custom grade..."
+                  value={verifiedGrade}
+                  onChange={(e) => setVerifiedGrade(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #ddd'
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {selected.appraisal_data && (
             <div className="form-data-view" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', maxHeight: '400px', overflowY: 'auto' }}>
