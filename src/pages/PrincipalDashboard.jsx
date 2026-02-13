@@ -54,7 +54,10 @@ export default function PrincipalDashboard() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ verified_grade: verifiedGrade })
+          body: JSON.stringify({
+            verified_grade: verifiedGrade,
+            principal_remarks: remarks
+          })
         }
       );
 
@@ -66,6 +69,7 @@ export default function PrincipalDashboard() {
       setSelected((prev) => ({
         ...prev,
         status: "PRINCIPAL_APPROVED",
+        remarks: remarks,
       }));
       setVerifiedGrade("");
     } catch (err) {
@@ -125,6 +129,24 @@ export default function PrincipalDashboard() {
     } catch (err) {
       console.error(err);
       alert("Failed to download PDF.");
+    }
+  };
+
+  const previewPdf = async (url) => {
+    try {
+      const authToken =
+        localStorage.getItem("access") || sessionStorage.getItem("access");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) throw new Error("Preview failed");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to preview PDF.");
     }
   };
 
@@ -196,6 +218,8 @@ export default function PrincipalDashboard() {
           verified_grade: data.verified_grade
         }));
         if (data.verified_grade) setVerifiedGrade(data.verified_grade);
+        const principalReviewRemarks = data?.appraisal_data?.principal_review?.remarks || data?.remarks || "";
+        setRemarks(principalReviewRemarks);
       } catch (err) {
         console.error("Failed to fetch appraisal data", err);
       }
@@ -344,6 +368,27 @@ export default function PrincipalDashboard() {
                   }}
                 />
               </div>
+            </div>
+          )}
+
+          {selected.id && (
+            <div style={{ marginTop: '18px', marginBottom: '4px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="approve-btn"
+                style={{ height: '36px', padding: '0 14px' }}
+                onClick={() => previewPdf(`http://127.0.0.1:8000/api/appraisal/${selected.id}/pdf/sppu-enhanced/`)}
+              >
+                Preview SPPU Form
+              </button>
+              <button
+                type="button"
+                className="approve-btn"
+                style={{ height: '36px', padding: '0 14px' }}
+                onClick={() => previewPdf(`http://127.0.0.1:8000/api/appraisal/${selected.id}/pdf/pbas-enhanced/`)}
+              >
+                Preview PBAS Form
+              </button>
             </div>
           )}
 

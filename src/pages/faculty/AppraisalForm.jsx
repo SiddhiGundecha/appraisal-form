@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import API from "../../api";
-import AppraisalSummary from "../../components/AppraisalSummary";
 import "../../styles/AppraisalForm.css";
 
 
@@ -24,8 +23,6 @@ export default function FacultyAppraisalForm() {
     ? "/hod/dashboard"
     : "/faculty/dashboard";
 
-  const [showSPPUPreview, setShowSPPUPreview] = useState(false);
-  const [showPBASPreview, setShowPBASPreview] = useState(false);
   const [studentFeedback, setStudentFeedback] = useState([
     {
       semester: "",
@@ -326,7 +323,6 @@ export default function FacultyAppraisalForm() {
           setAppraisalId(aid);
           setAppraisalStatus(res.data.status);
           setRemarks(res.data.remarks || "");
-          console.log("DEBUG: Loaded appraisal", { id: aid, status: res.data.status });
           const draft = res.data.appraisal_data;
           const ui = draft._ui_state;
 
@@ -347,6 +343,16 @@ export default function FacultyAppraisalForm() {
 
           // FALLBACK: Restore from structured data (lossy)
           if (draft.general) {
+            const promotionRaw = (draft.general.promotion_designation_due_date || "").toString().trim();
+            const dateTokens = promotionRaw.match(/\d{4}-\d{2}-\d{2}/g) || [];
+            const restoredPromotionDate = dateTokens[0] || "";
+            const restoredEligibilityDate = dateTokens[1] || "";
+            const restoredPromotionDesignation = promotionRaw
+              .replace(restoredPromotionDate, "")
+              .replace(restoredEligibilityDate, "")
+              .replace(/\s+/g, " ")
+              .trim();
+
             setGeneralInfo(prev => ({
               ...prev,
               academicYear: res.data.academic_year || prev.academic_year,
@@ -355,7 +361,9 @@ export default function FacultyAppraisalForm() {
               designation: draft.general.designation || prev.designation,
               communicationAddress: draft.general.communication_address || prev.communicationAddress,
               currentDesignation: draft.general.present_designation_grade_pay || prev.currentDesignation,
-              promotionDesignation: draft.general.promotion_designation_due_date || prev.promotionDesignation,
+              promotionDesignation: restoredPromotionDesignation || prev.promotionDesignation,
+              promotionDate: restoredPromotionDate || prev.promotionDate,
+              eligibilityDate: restoredEligibilityDate || prev.eligibilityDate,
             }));
           }
 
@@ -574,7 +582,8 @@ export default function FacultyAppraisalForm() {
           organizing_events: sppuInvolvement.seminarOrg === "Yes",
           phd_guidance: sppuInvolvement.phdGuidance === "Yes",
           research_project: sppuInvolvement.researchProject === "Yes",
-          sponsored_project: false
+          sponsored_project: sppuInvolvement.publication === "Yes",
+          publication_in_ugc: sppuInvolvement.publication === "Yes"
         },
 
         research: {
@@ -651,10 +660,9 @@ export default function FacultyAppraisalForm() {
   };
 
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (silent = false) => {
     try {
       const payload = buildBackendPayload("draft");
-      // console.log("DRAFT PAYLOAD", payload);
 
 
       let url = submitEndpoint;
@@ -664,17 +672,48 @@ export default function FacultyAppraisalForm() {
           : `/faculty/appraisal/${appraisalId}/resubmit/`;
       }
 
-      await API.post(url, payload, {
+      const response = await API.post(url, payload, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("access")}`
         }
       });
 
+      const savedAppraisalId = response?.data?.appraisal_id || appraisalId;
+      const currentState = response?.data?.current_state;
+      if (savedAppraisalId) setAppraisalId(savedAppraisalId);
+      if (currentState) setAppraisalStatus(currentState);
 
-      alert("Draft saved successfully");
+      if (!silent) alert("Draft saved successfully");
+      return savedAppraisalId;
     } catch (error) {
       console.error(error);
-      alert("Failed to save draft");
+      if (!silent) alert("Failed to save draft");
+      return null;
+    }
+  };
+
+  const previewGeneratedPdf = async (formType) => {
+    try {
+      let id = appraisalId;
+      if (!id) {
+        id = await handleSaveDraft(true);
+      }
+      if (!id) {
+        alert("Save draft first, then preview the generated forms.");
+        return;
+      }
+
+      const endpoint = formType === "SPPU"
+        ? `appraisal/${id}/pdf/sppu-enhanced/`
+        : `appraisal/${id}/pdf/pbas-enhanced/`;
+
+      const response = await API.get(endpoint, { responseType: "blob" });
+      const pdfBlobUrl = window.URL.createObjectURL(response.data);
+      window.open(pdfBlobUrl, "_blank", "noopener,noreferrer");
+      setTimeout(() => window.URL.revokeObjectURL(pdfBlobUrl), 60000);
+    } catch (error) {
+      console.error("Preview failed", error);
+      alert("Failed to load preview PDF.");
     }
   };
 
@@ -835,6 +874,7 @@ export default function FacultyAppraisalForm() {
     });
 
     research.projects.forEach((p) => {
+      if (!p.status || !p.amountSlab) return;
       const label = `${p.status || ""} ${p.amountSlab || ""} ${p.role || ""}`.trim();
       if (p.status === "Completed") {
         if (p.amountSlab === ">10L") upsert("project_completed_gt_10_lakhs", label, "", p.enclosureNo, 1);
@@ -846,6 +886,7 @@ export default function FacultyAppraisalForm() {
     });
 
     research.guidance.forEach((g) => {
+      if (!g.degree || !g.status) return;
       const count = Number(g.count || 0) || 1;
       const label = `${g.degree || ""} ${g.status || ""}`.trim();
       if (g.degree === "PhD" && g.status === "Awarded") upsert("phd_awarded", label, g.year, g.enclosureNo, count);
@@ -854,6 +895,7 @@ export default function FacultyAppraisalForm() {
     });
 
     research.moocsIct.forEach((m) => {
+      if (!m.category || !m.role) return;
       const label = `${m.category || ""} ${m.role || ""}`.trim();
       if (m.category === "MOOC") {
         if (m.role === "Course Coordinator") upsert("mooc_course_coordinator", label, m.year, m.enclosureNo, 1);
@@ -869,9 +911,11 @@ export default function FacultyAppraisalForm() {
     });
 
     research.consultancyPolicy.forEach((c) => {
+      if (!c.category) return;
       const label = `${c.category || ""} ${c.level || ""}`.trim();
       if (c.category === "Consultancy") upsert("consultancy", label, "", c.enclosureNo, 1);
       if (c.category === "Policy Document") {
+        if (!c.level) return;
         if (c.level === "International") upsert("policy_international", label, "", c.enclosureNo, 1);
         else if (c.level === "National") upsert("policy_national", label, "", c.enclosureNo, 1);
         else if (c.level === "State") upsert("policy_state", label, "", c.enclosureNo, 1);
@@ -879,18 +923,21 @@ export default function FacultyAppraisalForm() {
     });
 
     research.awards.forEach((a) => {
+      if (!a.level) return;
       const label = a.title || a.level || "Award";
       if (a.level === "International") upsert("award_international", label, a.year, a.enclosureNo, 1);
       else upsert("award_national", label, a.year, a.enclosureNo, 1);
     });
 
     research.patents.forEach((p) => {
+      if (!p.type) return;
       const label = `${p.type || ""} ${p.status || ""}`.trim();
       if (p.type === "International") upsert("patent_international", label, "", p.enclosureNo, 1);
       else upsert("patent_national", label, "", p.enclosureNo, 1);
     });
 
     research.invitedTalks.forEach((t) => {
+      if (!t.level) return;
       const label = `${t.role || ""} ${t.level || ""}`.trim();
       if (t.level === "International Abroad") upsert("invited_lecture_international_abroad", label, t.year, t.enclosureNo, 1);
       else if (t.level === "International India") upsert("invited_lecture_international_india", label, t.year, t.enclosureNo, 1);
@@ -1044,8 +1091,7 @@ export default function FacultyAppraisalForm() {
 
     try {
       // 3️⃣ Build payload (ONLY ONCE)
-      const payload = buildBackendPayload("submit"); // Changed to call buildBackendPayload
-      // console.log("✅ FINAL SUBMIT PAYLOAD", payload);
+      const payload = buildBackendPayload("submit");
 
 
       // 4️⃣ API call
@@ -1055,8 +1101,6 @@ export default function FacultyAppraisalForm() {
           ? `/hod/resubmit/${appraisalId}/`
           : `/faculty/appraisal/${appraisalId}/resubmit/`;
       }
-
-      console.log("DEBUG: Submitting to", url, { appraisalId, appraisalStatus });
 
       await API.post(url, payload, {
         headers: {
@@ -2680,41 +2724,19 @@ export default function FacultyAppraisalForm() {
                 <button
                   type="button"
                   className="btn-outline"
-                  onClick={() => setShowSPPUPreview(true)}
+                  onClick={() => previewGeneratedPdf("SPPU")}
                 >
-                  Preview Form Data
+                  Preview SPPU Form
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => previewGeneratedPdf("PBAS")}
+                >
+                  Preview PBAS Form
                 </button>
               </div>
             </div>
-
-            {/* ================= APPRAISAL DATA PREVIEW ================= */}
-            {showSPPUPreview && (
-              <div className="entry-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h4>Appraisal Data Preview</h4>
-                  <button
-                    className="btn-back"
-                    style={{ margin: 0 }}
-                    onClick={() => setShowSPPUPreview(false)}
-                  >
-                    Close Preview
-                  </button>
-                </div>
-
-                <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "16px", maxHeight: "600px", overflowY: "auto" }}>
-                  <AppraisalSummary data={{
-                    generalInfo,
-                    teachingActivities,
-                    studentFeedback,
-                    departmentalActivities,
-                    instituteActivities,
-                    societyActivities,
-                    research,
-                    acrDetails
-                  }} />
-                </div>
-              </div>
-            )}
 
             {/* ================= DECLARATION ================= */}
 

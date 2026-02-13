@@ -295,6 +295,24 @@ export default function HODDashboard() {
     }
   };
 
+  const previewPdf = async (url) => {
+    try {
+      const authToken =
+        localStorage.getItem("access") || sessionStorage.getItem("access");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) throw new Error("Preview failed");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to preview PDF.");
+    }
+  };
+
 
 
   /* ================= REVIEW SCREEN ================= */
@@ -399,6 +417,29 @@ export default function HODDashboard() {
             )
           }
 
+
+          {
+            selectedSubmission.appraisal_id && (
+              <div style={{ marginTop: '18px', marginBottom: '4px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="approve-btn"
+                  style={{ height: '36px', padding: '0 14px' }}
+                  onClick={() => previewPdf(`http://127.0.0.1:8000/api/appraisal/${selectedSubmission.appraisal_id}/pdf/sppu-enhanced/`)}
+                >
+                  Preview SPPU Form
+                </button>
+                <button
+                  type="button"
+                  className="approve-btn"
+                  style={{ height: '36px', padding: '0 14px' }}
+                  onClick={() => previewPdf(`http://127.0.0.1:8000/api/appraisal/${selectedSubmission.appraisal_id}/pdf/pbas-enhanced/`)}
+                >
+                  Preview PBAS Form
+                </button>
+              </div>
+            )
+          }
 
           {
             selectedSubmission.appraisal_data && (
