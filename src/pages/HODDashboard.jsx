@@ -46,11 +46,36 @@ const TABLE2_VERIFIED_FIELDS = [
   { key: "total", label: "Total (Table 2)" },
 ];
 
+const TABLE2_TOTAL_KEY = "total";
+const TABLE2_ITEM_KEYS = TABLE2_VERIFIED_FIELDS
+  .map((item) => item.key)
+  .filter((key) => key !== TABLE2_TOTAL_KEY);
+
 const buildEmptyTable2Verified = () =>
   TABLE2_VERIFIED_FIELDS.reduce((acc, item) => {
     acc[item.key] = "";
     return acc;
   }, {});
+
+const parseScoreValue = (value) => {
+  const parsed = Number(String(value ?? "").trim());
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatScoreValue = (value) => {
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+};
+
+const computeTable2VerifiedTotal = (scores = {}) => {
+  const total = TABLE2_ITEM_KEYS.reduce((sum, key) => sum + parseScoreValue(scores[key]), 0);
+  return formatScoreValue(total);
+};
+
+const withAutoTable2Total = (scores = {}) => ({
+  ...scores,
+  [TABLE2_TOTAL_KEY]: computeTable2VerifiedTotal(scores),
+});
 
 const toNumber = (value) => {
   const n = Number(value);
@@ -172,14 +197,17 @@ export default function HODDashboard() {
           appraisal_data: res.data.appraisal_data,
           verified_grade: res.data.verified_grade,
           sppu_review_data: res.data.sppu_review_data || null,
+          calculated_total_score: res.data.calculated_total_score,
         }));
         const grading = res.data?.verified_grading || {};
         setTable1VerifiedTeaching(grading.table1_verified_teaching || "");
         setTable1VerifiedActivities(grading.table1_verified_activities || "");
-        setTable2VerifiedScores({
-          ...buildEmptyTable2Verified(),
-          ...(grading.table2_verified_scores || {}),
-        });
+        setTable2VerifiedScores(
+          withAutoTable2Total({
+            ...buildEmptyTable2Verified(),
+            ...(grading.table2_verified_scores || {}),
+          })
+        );
         const hodReview = res.data?.appraisal_data?.hod_review || {};
         setHodCommentsTable1(hodReview.comments_table1 || "");
         setHodCommentsTable2(hodReview.comments_table2 || "");
@@ -194,7 +222,9 @@ export default function HODDashboard() {
 
   const [table1VerifiedTeaching, setTable1VerifiedTeaching] = useState("");
   const [table1VerifiedActivities, setTable1VerifiedActivities] = useState("");
-  const [table2VerifiedScores, setTable2VerifiedScores] = useState(buildEmptyTable2Verified());
+  const [table2VerifiedScores, setTable2VerifiedScores] = useState(
+    withAutoTable2Total(buildEmptyTable2Verified())
+  );
   const [hodCommentsTable1, setHodCommentsTable1] = useState("");
   const [hodCommentsTable2, setHodCommentsTable2] = useState("");
   const [hodRemarksSuggestions, setHodRemarksSuggestions] = useState("");
@@ -241,7 +271,7 @@ export default function HODDashboard() {
           body: JSON.stringify({
             table1_verified_teaching: table1VerifiedTeaching,
             table1_verified_activities: table1VerifiedActivities,
-            table2_verified_scores: table2VerifiedScores,
+            table2_verified_scores: withAutoTable2Total(table2VerifiedScores),
             hod_comments_table1: hodCommentsTable1,
             hod_comments_table2: hodCommentsTable2,
             hod_remarks: hodRemarksSuggestions
@@ -255,7 +285,7 @@ export default function HODDashboard() {
       setSelectedSubmission(null);
       setTable1VerifiedTeaching("");
       setTable1VerifiedActivities("");
-      setTable2VerifiedScores(buildEmptyTable2Verified());
+      setTable2VerifiedScores(withAutoTable2Total(buildEmptyTable2Verified()));
       setHodCommentsTable1("");
       setHodCommentsTable2("");
       setHodRemarksSuggestions("");
@@ -389,10 +419,13 @@ export default function HODDashboard() {
   };
 
   const updateTable2Verified = (key, value) => {
-    setTable2VerifiedScores((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    if (key === TABLE2_TOTAL_KEY) return;
+    setTable2VerifiedScores((prev) =>
+      withAutoTable2Total({
+        ...prev,
+        [key]: value,
+      })
+    );
   };
 
   const selfTeaching = deriveSelfTeaching(
@@ -400,6 +433,11 @@ export default function HODDashboard() {
     selectedSubmission?.appraisal_data
   );
   const selfActivities = selectedSubmission?.sppu_review_data?.table1_activities || {};
+  const formattedTotalScore =
+    selectedSubmission?.calculated_total_score === null ||
+    selectedSubmission?.calculated_total_score === undefined
+      ? "-"
+      : Number(selectedSubmission.calculated_total_score).toFixed(2);
 
   const previewPdf = async (url) => {
     try {
@@ -454,6 +492,11 @@ export default function HODDashboard() {
                 <p style={{ fontSize: '0.9rem', color: '#666' }}>
                   Enter verified grading for Table 1 and the verified column values for Table 2.
                 </p>
+                <div style={{ margin: '12px 0', padding: '12px', border: '1px dashed #d1d5db', borderRadius: '6px', background: '#f8fafc' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#4b5563' }}>Auto-calculated Total Score</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#111827' }}>{formattedTotalScore}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Computed from submitted data; updates after reload/approval.</div>
+                </div>
                 <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                   Table 1 - Teaching (Verified Grade)
                 </label>
@@ -524,8 +567,17 @@ export default function HODDashboard() {
                           type="text"
                           value={table2VerifiedScores[field.key] || ""}
                           onChange={(e) => updateTable2Verified(field.key, e.target.value)}
-                          placeholder="Verified"
-                          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                          placeholder={field.key === TABLE2_TOTAL_KEY ? "Auto" : "Verified"}
+                          readOnly={field.key === TABLE2_TOTAL_KEY}
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd',
+                            background: field.key === TABLE2_TOTAL_KEY ? '#f3f4f6' : '#fff',
+                            color: field.key === TABLE2_TOTAL_KEY ? '#111827' : 'inherit',
+                            fontWeight: field.key === TABLE2_TOTAL_KEY ? 600 : 400,
+                          }}
                         />
                       </div>
                     ))}

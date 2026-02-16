@@ -44,11 +44,36 @@ const TABLE2_VERIFIED_FIELDS = [
   { key: "total", label: "Total (Table 2)" },
 ];
 
+const TABLE2_TOTAL_KEY = "total";
+const TABLE2_ITEM_KEYS = TABLE2_VERIFIED_FIELDS
+  .map((item) => item.key)
+  .filter((key) => key !== TABLE2_TOTAL_KEY);
+
 const buildEmptyTable2Verified = () =>
   TABLE2_VERIFIED_FIELDS.reduce((acc, item) => {
     acc[item.key] = "";
     return acc;
   }, {});
+
+const parseScoreValue = (value) => {
+  const parsed = Number(String(value ?? "").trim());
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatScoreValue = (value) => {
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+};
+
+const computeTable2VerifiedTotal = (scores = {}) => {
+  const total = TABLE2_ITEM_KEYS.reduce((sum, key) => sum + parseScoreValue(scores[key]), 0);
+  return formatScoreValue(total);
+};
+
+const withAutoTable2Total = (scores = {}) => ({
+  ...scores,
+  [TABLE2_TOTAL_KEY]: computeTable2VerifiedTotal(scores),
+});
 
 const toNumber = (value) => {
   const n = Number(value);
@@ -138,7 +163,7 @@ export default function PrincipalDashboard() {
           body: JSON.stringify({
             table1_verified_teaching: table1VerifiedTeaching,
             table1_verified_activities: table1VerifiedActivities,
-            table2_verified_scores: table2VerifiedScores,
+            table2_verified_scores: withAutoTable2Total(table2VerifiedScores),
             principal_remarks: remarks
           })
         }
@@ -156,7 +181,7 @@ export default function PrincipalDashboard() {
       }));
       setTable1VerifiedTeaching("");
       setTable1VerifiedActivities("");
-      setTable2VerifiedScores(buildEmptyTable2Verified());
+      setTable2VerifiedScores(withAutoTable2Total(buildEmptyTable2Verified()));
     } catch (err) {
       alert("Approval failed");
       console.error(err);
@@ -302,14 +327,17 @@ export default function PrincipalDashboard() {
           appraisal_data: data.appraisal_data,
           verified_grade: data.verified_grade,
           sppu_review_data: data.sppu_review_data || null,
+          calculated_total_score: data.calculated_total_score,
         }));
         const grading = data?.verified_grading || {};
         setTable1VerifiedTeaching(grading.table1_verified_teaching || "");
         setTable1VerifiedActivities(grading.table1_verified_activities || "");
-        setTable2VerifiedScores({
-          ...buildEmptyTable2Verified(),
-          ...(grading.table2_verified_scores || {}),
-        });
+        setTable2VerifiedScores(
+          withAutoTable2Total({
+            ...buildEmptyTable2Verified(),
+            ...(grading.table2_verified_scores || {}),
+          })
+        );
         const principalReviewRemarks = data?.appraisal_data?.principal_review?.remarks || data?.remarks || "";
         setRemarks(principalReviewRemarks);
       } catch (err) {
@@ -322,13 +350,18 @@ export default function PrincipalDashboard() {
 
   const [table1VerifiedTeaching, setTable1VerifiedTeaching] = useState("");
   const [table1VerifiedActivities, setTable1VerifiedActivities] = useState("");
-  const [table2VerifiedScores, setTable2VerifiedScores] = useState(buildEmptyTable2Verified());
+  const [table2VerifiedScores, setTable2VerifiedScores] = useState(
+    withAutoTable2Total(buildEmptyTable2Verified())
+  );
 
   const updateTable2Verified = (key, value) => {
-    setTable2VerifiedScores((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    if (key === TABLE2_TOTAL_KEY) return;
+    setTable2VerifiedScores((prev) =>
+      withAutoTable2Total({
+        ...prev,
+        [key]: value,
+      })
+    );
   };
 
   const selfTeaching = deriveSelfTeaching(
@@ -336,6 +369,11 @@ export default function PrincipalDashboard() {
     selected?.appraisal_data
   );
   const selfActivities = selected?.sppu_review_data?.table1_activities || {};
+  const formattedTotalScore =
+    selected?.calculated_total_score === null ||
+    selected?.calculated_total_score === undefined
+      ? "-"
+      : Number(selected.calculated_total_score).toFixed(2);
 
 
   /* ================= FINAL APPROVE ================= */
@@ -445,6 +483,11 @@ export default function PrincipalDashboard() {
               <p style={{ fontSize: '0.9rem', color: '#666' }}>
                 Enter verified grading for Table 1 and the verified column values for Table 2.
               </p>
+              <div style={{ margin: '12px 0', padding: '12px', border: '1px dashed #d1d5db', borderRadius: '6px', background: '#f8fafc' }}>
+                <div style={{ fontSize: '0.9rem', color: '#4b5563' }}>Auto-calculated Total Score</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#111827' }}>{formattedTotalScore}</div>
+                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Computed from submitted data; updates after reload/approval.</div>
+              </div>
               <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                 Table 1 - Teaching (Verified Grade)
               </label>
@@ -513,8 +556,17 @@ export default function PrincipalDashboard() {
                         type="text"
                         value={table2VerifiedScores[field.key] || ""}
                         onChange={(e) => updateTable2Verified(field.key, e.target.value)}
-                        placeholder="Verified"
-                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                        placeholder={field.key === TABLE2_TOTAL_KEY ? "Auto" : "Verified"}
+                        readOnly={field.key === TABLE2_TOTAL_KEY}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                          background: field.key === TABLE2_TOTAL_KEY ? '#f3f4f6' : '#fff',
+                          color: field.key === TABLE2_TOTAL_KEY ? '#111827' : 'inherit',
+                          fontWeight: field.key === TABLE2_TOTAL_KEY ? 600 : 400,
+                        }}
                       />
                     </div>
                   ))}
