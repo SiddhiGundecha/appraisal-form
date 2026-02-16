@@ -3,6 +3,87 @@ import { useNavigate } from "react-router-dom";
 import "../styles/HodDashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
 
+const TABLE2_VERIFIED_FIELDS = [
+  { key: "peer_reviewed_journals", label: "1. Research papers (Peer-reviewed/UGC)" },
+  { key: "books_international", label: "2(a) Books - International publishers" },
+  { key: "books_national", label: "2(a) Books - National publishers" },
+  { key: "chapter_edited_book", label: "2(a) Chapter in edited book" },
+  { key: "editor_book_international", label: "2(a) Editor - International publisher" },
+  { key: "editor_book_national", label: "2(a) Editor - National publisher" },
+  { key: "translation_chapter_or_paper", label: "2(b) Translation - Chapter/Paper" },
+  { key: "translation_book", label: "2(b) Translation - Book" },
+  { key: "pedagogy_development", label: "3(a) Innovative pedagogy" },
+  { key: "curriculum_design", label: "3(b) Curriculum/course design" },
+  { key: "moocs_4quadrant", label: "3(c) MOOCs 4 quadrant" },
+  { key: "moocs_single_lecture", label: "3(c) MOOCs per module/lecture" },
+  { key: "moocs_content_writer", label: "3(c) MOOCs content writer/SME" },
+  { key: "moocs_coordinator", label: "3(c) MOOCs course coordinator" },
+  { key: "econtent_4quadrant_complete", label: "3(d) e-Content complete course/e-book" },
+  { key: "econtent_4quadrant_per_module", label: "3(d) e-Content per module" },
+  { key: "econtent_module_contribution", label: "3(d) e-Content module contribution" },
+  { key: "econtent_editor", label: "3(d) e-Content editor" },
+  { key: "phd_awarded", label: "4(a) Ph.D. awarded" },
+  { key: "phd_submitted", label: "4(a) Ph.D. submitted" },
+  { key: "mphil_pg_dissertation", label: "4(a) M.Phil./P.G. dissertation" },
+  { key: "research_project_above_10l", label: "4(b) Completed project >10 lakhs" },
+  { key: "research_project_below_10l", label: "4(b) Completed project <10 lakhs" },
+  { key: "research_project_ongoing_above_10l", label: "4(c) Ongoing project >10 lakhs" },
+  { key: "research_project_ongoing_below_10l", label: "4(c) Ongoing project <10 lakhs" },
+  { key: "consultancy", label: "4(d) Consultancy" },
+  { key: "patent_international", label: "5(a) Patent - International" },
+  { key: "patent_national", label: "5(a) Patent - National" },
+  { key: "policy_international", label: "6(b) Policy document - International" },
+  { key: "policy_national", label: "6(b) Policy document - National" },
+  { key: "policy_state", label: "6(b) Policy document - State" },
+  { key: "award_international", label: "7(c) Award/Fellowship - International" },
+  { key: "award_national", label: "7(c) Award/Fellowship - National" },
+  { key: "conference_international_abroad", label: "8. Conference/Invited - International (Abroad)" },
+  { key: "conference_international_country", label: "8. Conference/Invited - International (Within Country)" },
+  { key: "conference_national", label: "8. Conference/Invited - National" },
+  { key: "conference_state_university", label: "8. Conference/Invited - State/University" },
+  { key: "total", label: "Total (Table 2)" },
+];
+
+const buildEmptyTable2Verified = () =>
+  TABLE2_VERIFIED_FIELDS.reduce((acc, item) => {
+    acc[item.key] = "";
+    return acc;
+  }, {});
+
+const toNumber = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const deriveSelfTeaching = (reviewData, appraisalData) => {
+  if (reviewData?.table1_teaching) return reviewData.table1_teaching;
+  const courses = appraisalData?.teaching?.courses || [];
+  const totalAssigned = courses.reduce(
+    (sum, c) => sum + toNumber(c.total_classes_assigned ?? c.scheduled_classes),
+    0
+  );
+  const totalTaught = courses.reduce(
+    (sum, c) => sum + toNumber(c.classes_taught ?? c.held_classes),
+    0
+  );
+  const percentage = totalAssigned > 0 ? (totalTaught / totalAssigned) * 100 : 0;
+  const selfGrade =
+    percentage >= 80 ? "Good" : percentage >= 70 ? "Satisfactory" : "Not Satisfactory";
+  return {
+    total_assigned: totalAssigned,
+    total_taught: totalTaught,
+    percentage: percentage.toFixed(2),
+    self_grade: selfGrade,
+  };
+};
+
+const getTable2SelfValue = (reviewData, key) => {
+  if (!reviewData) return "";
+  if (key === "total") return reviewData.table2_total_score ?? "";
+  const row = reviewData.table2_research?.[key];
+  return row?.total_score ?? "";
+};
+
 export default function PrincipalDashboard() {
   const navigate = useNavigate();
 
@@ -40,9 +121,9 @@ export default function PrincipalDashboard() {
   };
 
   const handleApprove = async () => {
-    // Validation for verified grade (ONLY FOR HOD APPRAISALS)
-    if (selected.is_hod_appraisal && !verifiedGrade) {
-      if (!window.confirm("You have not entered a Verified Grade for this HOD Appraisal. Proceed anyway?")) return;
+    if (selected.is_hod_appraisal && (!table1VerifiedTeaching || !table1VerifiedActivities)) {
+      alert("Please set both Table 1 verified gradings for HOD submission.");
+      return;
     }
 
     try {
@@ -55,7 +136,9 @@ export default function PrincipalDashboard() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            verified_grade: verifiedGrade,
+            table1_verified_teaching: table1VerifiedTeaching,
+            table1_verified_activities: table1VerifiedActivities,
+            table2_verified_scores: table2VerifiedScores,
             principal_remarks: remarks
           })
         }
@@ -71,7 +154,9 @@ export default function PrincipalDashboard() {
         status: "PRINCIPAL_APPROVED",
         remarks: remarks,
       }));
-      setVerifiedGrade("");
+      setTable1VerifiedTeaching("");
+      setTable1VerifiedActivities("");
+      setTable2VerifiedScores(buildEmptyTable2Verified());
     } catch (err) {
       alert("Approval failed");
       console.error(err);
@@ -215,9 +300,16 @@ export default function PrincipalDashboard() {
         setSelected((prev) => ({
           ...prev,
           appraisal_data: data.appraisal_data,
-          verified_grade: data.verified_grade
+          verified_grade: data.verified_grade,
+          sppu_review_data: data.sppu_review_data || null,
         }));
-        if (data.verified_grade) setVerifiedGrade(data.verified_grade);
+        const grading = data?.verified_grading || {};
+        setTable1VerifiedTeaching(grading.table1_verified_teaching || "");
+        setTable1VerifiedActivities(grading.table1_verified_activities || "");
+        setTable2VerifiedScores({
+          ...buildEmptyTable2Verified(),
+          ...(grading.table2_verified_scores || {}),
+        });
         const principalReviewRemarks = data?.appraisal_data?.principal_review?.remarks || data?.remarks || "";
         setRemarks(principalReviewRemarks);
       } catch (err) {
@@ -228,7 +320,22 @@ export default function PrincipalDashboard() {
     fetchDetails();
   }, [selected?.id]);
 
-  const [verifiedGrade, setVerifiedGrade] = useState("");
+  const [table1VerifiedTeaching, setTable1VerifiedTeaching] = useState("");
+  const [table1VerifiedActivities, setTable1VerifiedActivities] = useState("");
+  const [table2VerifiedScores, setTable2VerifiedScores] = useState(buildEmptyTable2Verified());
+
+  const updateTable2Verified = (key, value) => {
+    setTable2VerifiedScores((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const selfTeaching = deriveSelfTeaching(
+    selected?.sppu_review_data,
+    selected?.appraisal_data
+  );
+  const selfActivities = selected?.sppu_review_data?.table1_activities || {};
 
 
   /* ================= FINAL APPROVE ================= */
@@ -336,37 +443,82 @@ export default function PrincipalDashboard() {
             <div style={{ marginTop: '16px' }}>
               <h3>Verified Grading (HOD Appraisal)</h3>
               <p style={{ fontSize: '0.9rem', color: '#666' }}>
-                Enter the verified grade for this HOD.
+                Enter verified grading for Table 1 and the verified column values for Table 2.
               </p>
-              <select
-                value={verifiedGrade}
-                onChange={(e) => setVerifiedGrade(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  marginTop: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #ddd'
-                }}
-              >
-                <option value="">Select Grade...</option>
-                <option value="Good">Good</option>
-                <option value="Satisfactory">Satisfactory</option>
-                <option value="Not Satisfactory">Not Satisfactory</option>
-              </select>
-              <div style={{ marginTop: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Or type custom grade..."
-                  value={verifiedGrade}
-                  onChange={(e) => setVerifiedGrade(e.target.value)}
+              <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                Table 1 - Teaching (Verified Grade)
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '12px', alignItems: 'start' }}>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '6px', padding: '10px', background: '#fafafa' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '4px' }}><b>Self Appraisal</b></div>
+                  <div style={{ fontSize: '0.9rem' }}>Assigned: {selfTeaching.total_assigned ?? 0}</div>
+                  <div style={{ fontSize: '0.9rem' }}>Taught: {selfTeaching.total_taught ?? 0}</div>
+                  <div style={{ fontSize: '0.9rem' }}>% Classes: {selfTeaching.percentage ?? "0.00"}%</div>
+                  <div style={{ fontSize: '0.9rem' }}><b>Grade: {selfTeaching.self_grade || "-"}</b></div>
+                </div>
+                <select
+                  value={table1VerifiedTeaching}
+                  onChange={(e) => setTable1VerifiedTeaching(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '8px',
+                    padding: '10px',
+                    marginTop: '8px',
                     borderRadius: '4px',
                     border: '1px solid #ddd'
                   }}
-                />
+                >
+                  <option value="">Select Grade...</option>
+                  <option value="Good">Good</option>
+                  <option value="Satisfactory">Satisfactory</option>
+                  <option value="Not Satisfactory">Not Satisfactory</option>
+                </select>
+              </div>
+              <label style={{ fontWeight: 600, display: 'block', marginTop: '10px', marginBottom: '6px' }}>
+                Table 1 - Activity (Verified Grade)
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '12px', alignItems: 'start' }}>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '6px', padding: '10px', background: '#fafafa' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '4px' }}><b>Self Appraisal</b></div>
+                  <div style={{ fontSize: '0.9rem' }}>Selected Activities: {selfActivities.count ?? 0}</div>
+                  <div style={{ fontSize: '0.9rem' }}><b>Grade: {selfActivities.self_grade || "-"}</b></div>
+                </div>
+                <select
+                  value={table1VerifiedActivities}
+                  onChange={(e) => setTable1VerifiedActivities(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    border: '1px solid #ddd'
+                  }}
+                >
+                  <option value="">Select Grade...</option>
+                  <option value="Good">Good</option>
+                  <option value="Satisfactory">Satisfactory</option>
+                  <option value="Not Satisfactory">Not Satisfactory</option>
+                </select>
+              </div>
+              <div style={{ marginTop: '14px' }}>
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  Table 2 - Verified Column
+                </label>
+                <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '10px' }}>
+                  {TABLE2_VERIFIED_FIELDS.map((field) => (
+                    <div key={field.key} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 130px', gap: '10px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.9rem' }}>{field.label}</span>
+                      <span style={{ fontSize: '0.85rem', color: '#4b5563' }}>
+                        Self: {getTable2SelfValue(selected?.sppu_review_data, field.key)}
+                      </span>
+                      <input
+                        type="text"
+                        value={table2VerifiedScores[field.key] || ""}
+                        onChange={(e) => updateTable2Verified(field.key, e.target.value)}
+                        placeholder="Verified"
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
