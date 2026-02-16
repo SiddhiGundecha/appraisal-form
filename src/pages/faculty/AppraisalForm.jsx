@@ -3,8 +3,27 @@ import { useLocation, useNavigate } from "react-router-dom";
 import API from "../../api";
 import "../../styles/AppraisalForm.css";
 
+const getCurrentAcademicYear = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  // Academic year starts in June.
+  const startYear = now.getMonth() >= 5 ? year : year - 1;
+  return `${startYear}-${String(startYear + 1).slice(-2)}`;
+};
+
+const buildAcademicYearOptions = (currentAcademicYear) => {
+  const startYear = Number(String(currentAcademicYear).split("-")[0]);
+  if (!Number.isFinite(startYear)) return [currentAcademicYear];
+  return [
+    `${startYear - 1}-${String(startYear).slice(-2)}`,
+    currentAcademicYear,
+    `${startYear + 1}-${String(startYear + 2).slice(-2)}`,
+  ];
+};
+
 
 export default function FacultyAppraisalForm() {
+  const CURRENT_ACADEMIC_YEAR = getCurrentAcademicYear();
 
   const location = useLocation();   // new added
 
@@ -76,7 +95,7 @@ export default function FacultyAppraisalForm() {
 
 
   const [acrDetails, setAcrDetails] = useState({
-    year: "",
+    year: CURRENT_ACADEMIC_YEAR,
     acrAvailable: "",
     enclosureNo: "",
     creditPoints: ""   // new added
@@ -280,6 +299,7 @@ export default function FacultyAppraisalForm() {
   const [appraisalId, setAppraisalId] = useState(null);
   const [appraisalStatus, setAppraisalStatus] = useState("DRAFT");
   const [remarks, setRemarks] = useState("");
+  const [justification, setJustification] = useState("");
   /* ================= SECTION 1 ================= */
   const [generalInfo, setGeneralInfo] = useState({
     facultyName: "",
@@ -294,7 +314,7 @@ export default function FacultyAppraisalForm() {
     promotionDesignation: "",
     promotionDate: "",
     eligibilityDate: "",
-    academicYear: ""
+    academicYear: CURRENT_ACADEMIC_YEAR
   });
 
 
@@ -338,11 +358,17 @@ export default function FacultyAppraisalForm() {
             if (ui.acrDetails) setAcrDetails(ui.acrDetails);
             if (ui.research) setResearch(ui.research);
             if (ui.pbasScores) setPbasScores(ui.pbasScores);
+            if (ui.justification) setJustification(ui.justification);
             return;
           }
 
           // FALLBACK: Restore from structured data (lossy)
           if (draft.general) {
+            const designationGradeRaw = (draft.general.present_designation_grade_pay || "").toString().trim();
+            const designationGradeParts = designationGradeRaw.split("/").map((v) => v.trim()).filter(Boolean);
+            const restoredCurrentDesignation = designationGradeParts[0] || "";
+            const restoredPayLevel = designationGradeParts.slice(1).join(" / ");
+
             const promotionRaw = (draft.general.promotion_designation_due_date || "").toString().trim();
             const dateTokens = promotionRaw.match(/\d{4}-\d{2}-\d{2}/g) || [];
             const restoredPromotionDate = dateTokens[0] || "";
@@ -355,12 +381,16 @@ export default function FacultyAppraisalForm() {
 
             setGeneralInfo(prev => ({
               ...prev,
-              academicYear: res.data.academic_year || prev.academic_year,
+              academicYear: res.data.academic_year || prev.academicYear || CURRENT_ACADEMIC_YEAR,
               facultyName: draft.general.faculty_name || draft.general.name || prev.facultyName,
               department: draft.general.department || draft.general.department_center || prev.department,
               designation: draft.general.designation || prev.designation,
+              dateOfJoining: draft.general.date_of_joining || prev.dateOfJoining,
+              email: draft.general.email || prev.email,
+              mobile: draft.general.mobile || prev.mobile,
               communicationAddress: draft.general.communication_address || prev.communicationAddress,
-              currentDesignation: draft.general.present_designation_grade_pay || prev.currentDesignation,
+              currentDesignation: restoredCurrentDesignation || prev.currentDesignation,
+              payLevel: restoredPayLevel || prev.payLevel,
               promotionDesignation: restoredPromotionDesignation || prev.promotionDesignation,
               promotionDate: restoredPromotionDate || prev.promotionDate,
               eligibilityDate: restoredEligibilityDate || prev.eligibilityDate,
@@ -369,7 +399,7 @@ export default function FacultyAppraisalForm() {
 
           if (draft.teaching && draft.teaching.courses) {
             setTeachingActivities(draft.teaching.courses.map(c => ({
-              academicYear: res.data.academic_year || "",
+              academicYear: res.data.academic_year || CURRENT_ACADEMIC_YEAR,
               semester: c.semester || "",
               courseCode: c.course_code || "",
               courseName: c.course_name || "",
@@ -430,10 +460,11 @@ export default function FacultyAppraisalForm() {
           if (draft.acr) {
             setAcrDetails(prev => ({
               ...prev,
-              year: draft.acr.year || "",
+              year: draft.acr.year || CURRENT_ACADEMIC_YEAR,
               acrAvailable: draft.acr.grade || "",
             }));
           }
+          setJustification(draft.justification || draft.pbas?.justification || "");
         }
       })
       .catch(err => console.error("Failed to load draft", err));
@@ -462,11 +493,11 @@ export default function FacultyAppraisalForm() {
   const SEMESTERS = ["Sem 1", "Sem 2"];
   const TEACHING_TYPES = ["Lecture", "Tutorial", "Practical", "Lab"];
   const ACADEMIC_LEVELS = ["UG", "PG"];
-  const ACADEMIC_YEARS = ["2023-24", "2024-25", "2025-26"];
+  const ACADEMIC_YEARS = buildAcademicYearOptions(CURRENT_ACADEMIC_YEAR);
 
   const [teachingActivities, setTeachingActivities] = useState([
     {
-      academicYear: "",
+      academicYear: CURRENT_ACADEMIC_YEAR,
       semester: "",
       courseCode: "",
       courseName: "",
@@ -488,7 +519,7 @@ export default function FacultyAppraisalForm() {
     setTeachingActivities([
       ...teachingActivities,
       {
-        academicYear: "",
+        academicYear: generalInfo.academicYear || CURRENT_ACADEMIC_YEAR,
         semester: "",
         courseCode: "",
         courseName: "",
@@ -549,11 +580,15 @@ export default function FacultyAppraisalForm() {
 
       appraisal_data: {
         submit_action: submitAction,
+        justification: justification,
 
         general: {
           faculty_name: generalInfo.facultyName,
           designation: generalInfo.designation,
           department: generalInfo.department,
+          date_of_joining: generalInfo.dateOfJoining,
+          email: generalInfo.email,
+          mobile: generalInfo.mobile,
           communication_address: generalInfo.communicationAddress,
           present_designation_grade_pay: `${generalInfo.currentDesignation} / ${generalInfo.payLevel}`.trim(),
           promotion_designation_due_date: `${generalInfo.promotionDesignation} ${generalInfo.promotionDate || ""} ${generalInfo.eligibilityDate || ""}`.trim(),
@@ -600,6 +635,7 @@ export default function FacultyAppraisalForm() {
         pbas: {
           ...buildPBASScores(),
           ...buildPBASCounts(),
+          justification: justification,
 
           teaching_process: teachingActivities.map(t => {
             const assigned = Number(t.totalClassesAssigned || 0);
@@ -654,7 +690,22 @@ export default function FacultyAppraisalForm() {
             credits_claimed: Number(a.credit),
             enclosure_no: a.enclosureNo || null
           }))
-        }
+        },
+
+        // Persist exact UI state for reliable draft restore without lossy remapping.
+        _ui_state: {
+          generalInfo,
+          teachingActivities,
+          studentFeedback,
+          sppuInvolvement,
+          departmentalActivities,
+          instituteActivities,
+          societyActivities,
+          acrDetails,
+          research,
+          pbasScores,
+          justification,
+        },
       }
     };
   };
@@ -683,11 +734,14 @@ export default function FacultyAppraisalForm() {
       if (savedAppraisalId) setAppraisalId(savedAppraisalId);
       if (currentState) setAppraisalStatus(currentState);
 
-      if (!silent) alert("Draft saved successfully");
+      if (!silent) alert("Saved successfully");
       return savedAppraisalId;
     } catch (error) {
       console.error(error);
-      if (!silent) alert("Failed to save draft");
+      if (!silent) {
+        const message = error?.response?.data?.error || "Failed to save";
+        alert(message);
+      }
       return null;
     }
   };
@@ -753,7 +807,7 @@ export default function FacultyAppraisalForm() {
       newErrors.academicYear = "Academic year is required";
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
 
@@ -814,7 +868,7 @@ export default function FacultyAppraisalForm() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
   const handleSaveAndNext = () => {
     setErrors({});
@@ -830,7 +884,15 @@ export default function FacultyAppraisalForm() {
     });
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
+  };
+
+  const showValidationSummary = (validationErrors) => {
+    const messages = Object.values(validationErrors || {}).filter(Boolean);
+    if (!messages.length) return;
+    const preview = messages.slice(0, 5).join("\n- ");
+    const suffix = messages.length > 5 ? "\n- ..." : "";
+    alert(`Please fill required fields:\n- ${preview}${suffix}`);
   };
 
   const buildResearchEntries = () => {
@@ -1077,6 +1139,26 @@ export default function FacultyAppraisalForm() {
 
 
   const handleSubmitForm = async () => {
+    const step1Errors = validateStep1();
+    if (Object.keys(step1Errors).length > 0) {
+      setCurrentStep(1);
+      showValidationSummary(step1Errors);
+      return;
+    }
+
+    const step2Errors = validateStep2();
+    if (Object.keys(step2Errors).length > 0) {
+      setCurrentStep(2);
+      showValidationSummary(step2Errors);
+      return;
+    }
+
+    const sppuErrors = validateSPPU();
+    if (Object.keys(sppuErrors).length > 0) {
+      setCurrentStep(2);
+      showValidationSummary(sppuErrors);
+      return;
+    }
     // 1️⃣ Declaration check
     if (!declarationAccepted) {
       alert("Please accept the declaration.");
@@ -1421,8 +1503,11 @@ export default function FacultyAppraisalForm() {
               type="button"
               className="btn-primary"
               onClick={() => {
-                if (validateStep1()) {
+                const validationErrors = validateStep1();
+                if (Object.keys(validationErrors).length === 0) {
                   handleSaveAndNext(); // this should setCurrentStep(2)
+                } else {
+                  showValidationSummary(validationErrors);
                 }
               }}
             >
@@ -1674,9 +1759,17 @@ export default function FacultyAppraisalForm() {
                 type="button"
                 className="btn-primary"
                 onClick={() => {
-                  if (validateSPPU()) {
-                    setCurrentStep(3);
+                  const teachingErrors = validateStep2();
+                  if (Object.keys(teachingErrors).length > 0) {
+                    showValidationSummary(teachingErrors);
+                    return;
                   }
+                  const sppuErrors = validateSPPU();
+                  if (Object.keys(sppuErrors).length > 0) {
+                    showValidationSummary(sppuErrors);
+                    return;
+                  }
+                  setCurrentStep(3);
                 }}
               >
                 Next →
@@ -1992,6 +2085,23 @@ export default function FacultyAppraisalForm() {
                   )}
                 </div>
               ))}
+
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() =>
+                  addRow(setInstituteActivities, {
+                    semester: "",
+                    activity: "",
+                    credit: "",
+                    criteria: "",
+                    enclosureNo: "",
+                    otherActivity: "",
+                  })
+                }
+              >
+                + Add Institutional Activity
+              </button>
 
               <hr />
               {/*new added */}
@@ -2744,6 +2854,16 @@ export default function FacultyAppraisalForm() {
               disabled={formStatus === "submitted"}
               style={{ border: "none", padding: 0 }}
             >
+              <div className="form-group" style={{ marginTop: "16px" }}>
+                <label>Justification (for PBAS/SPPU)</label>
+                <textarea
+                  value={justification}
+                  onChange={(e) => setJustification(e.target.value)}
+                  placeholder="Enter brief justification/notes for this appraisal"
+                  rows={4}
+                />
+              </div>
+
               <div className="declaration-row" style={{ marginTop: "20px" }}>
                 <input
                   type="checkbox"
@@ -2804,7 +2924,7 @@ export default function FacultyAppraisalForm() {
               className="btn-outline"
               onClick={handleSaveDraft}
             >
-              Save Draft
+              Save
             </button>
           )}
 
