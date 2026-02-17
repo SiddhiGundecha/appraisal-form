@@ -414,60 +414,55 @@ body {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-.crop-container {
+.image-preview-container {
   position: relative;
   width: 100%;
   height: 400px;
   background: #000;
   border-radius: 12px;
   overflow: hidden;
-  cursor: move;
   user-select: none;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  pointer-events: none;
 }
 
 .crop-overlay {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 280px;
-  height: 280px;
-  border: 3px solid #fff;
-  border-radius: 50%;
+  top: 50px;
+  left: 50px;
+  width: 200px;
+  height: 200px;
+  border-radius: 10px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 2;
 }
 
-.crop-image {
+.crop-border {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform-origin: center center;
-  max-width: none;
-  min-width: 100%;
-  min-height: 100%;
-  user-select: none;
+  inset: 0;
+  border: 3px solid #fff;
+  border-radius: 10px;
   pointer-events: none;
 }
 
-.zoom-control {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.zoom-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #475569;
-  min-width: 50px;
-}
-
-.zoom-slider {
-  flex: 1;
-  cursor: pointer;
-  height: 6px;
+.resize-handle {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #2563eb;
+  cursor: nwse-resize;
 }
 
 .crop-save-btn {

@@ -35,8 +35,13 @@ export default function Profile() {
  useEffect(() => {
   API.get("me/")
     .then(res => {
-      setProfileData(res.data);
-      setEditData(res.data);
+      const { profile_image, ...profileFields } = res.data || {};
+      setProfileData(profileFields);
+      setEditData(profileFields);
+      setProfileImage(profile_image || DEFAULT_AVATAR);
+      setSavedProfileImage(profile_image || DEFAULT_AVATAR);
+      setProfileImageFile(null);
+      setProfileImageRemoved(false);
     })
     .catch(() => navigate("/login"));
 }, []);
@@ -44,6 +49,9 @@ export default function Profile() {
   /* ================= PROFILE IMAGE ================= */
 
   const [profileImage, setProfileImage] = useState(DEFAULT_AVATAR);
+  const [savedProfileImage, setSavedProfileImage] = useState(DEFAULT_AVATAR);
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImageRemoved, setProfileImageRemoved] = useState(false);
 
   // 🔹 Image editor states
   const [tempImage, setTempImage] = useState(null);
@@ -159,9 +167,17 @@ export default function Profile() {
         300
       );
 
-      setProfileImage(canvas.toDataURL("image/jpeg"));
-      setTempImage(null);
-      setShowImageEditor(false);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+      canvas.toBlob((blob) => {
+        setProfileImage(dataUrl);
+        if (blob) {
+          const file = new File([blob], `profile-${Date.now()}.jpg`, { type: "image/jpeg" });
+          setProfileImageFile(file);
+          setProfileImageRemoved(false);
+        }
+        setTempImage(null);
+        setShowImageEditor(false);
+      }, "image/jpeg", 0.9);
     };
   };
 
@@ -172,38 +188,57 @@ export default function Profile() {
 
   const deleteImage = () => {
     setProfileImage(DEFAULT_AVATAR);
+    setProfileImageFile(null);
+    setProfileImageRemoved(true);
   };
 
   /* ================= PROFILE EDIT ================= */
 
   const startEdit = () => {
     setEditData(profileData);
+    setProfileImageFile(null);
+    setProfileImageRemoved(false);
     setIsEditing(true);
   };
 
   const cancelEdit = () => {
     setEditData(profileData);
+    setProfileImage(savedProfileImage || DEFAULT_AVATAR);
+    setProfileImageFile(null);
+    setProfileImageRemoved(false);
     setIsEditing(false);
   };
 
   const saveProfile = async () => {
-  try {
-    await API.patch("me/", {
-      full_name: editData.full_name,
-      designation: editData.designation,
-      mobile_number: editData.mobile_number,
-    });
+    try {
+      const formData = new FormData();
+      formData.append("full_name", editData.full_name || "");
+      formData.append("designation", editData.designation || "");
+      formData.append("mobile_number", editData.mobile_number || "");
+      if (profileImageFile) {
+        formData.append("profile_image", profileImageFile);
+      }
+      if (profileImageRemoved) {
+        formData.append("remove_profile_image", "true");
+      }
+      await API.patch("me/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
     // 🔁 re-fetch updated data
-    const res = await API.get("me/");
-    setProfileData(res.data);
-    setEditData(res.data);
-
-    setIsEditing(false);
-  } catch (err) {
-    console.error(err.response?.data);
-  }
-};
+      const res = await API.get("me/");
+      const { profile_image, ...profileFields } = res.data || {};
+      setProfileData(profileFields);
+      setEditData(profileFields);
+      setProfileImage(profile_image || DEFAULT_AVATAR);
+      setSavedProfileImage(profile_image || DEFAULT_AVATAR);
+      setProfileImageFile(null);
+      setProfileImageRemoved(false);
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err.response?.data);
+    }
+  };
 
 
   const handleProfileChange = (e) => {
@@ -250,10 +285,10 @@ export default function Profile() {
         <button
           className="sidebar-button"
           onClick={() => {
-            if (profileData.role === "hod") navigate("/hod/dashboard");
-            else if (profileData.role === "principal")
+            if (String(profileData.role || "").toUpperCase() === "HOD") navigate("/hod/dashboard");
+            else if (String(profileData.role || "").toUpperCase() === "PRINCIPAL")
               navigate("/principal/dashboard");
-            else if (profileData.role === "admin")
+            else if (String(profileData.role || "").toUpperCase() === "ADMIN")
               navigate("/admin/dashboard");
             else navigate("/faculty/dashboard");
           }}

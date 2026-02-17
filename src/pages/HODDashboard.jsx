@@ -4,56 +4,15 @@ import API from "../api";
 import "../styles/HODDashboard.css";
 import "../styles/dashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
-
-const TABLE2_VERIFIED_FIELDS = [
-  { key: "peer_reviewed_journals", label: "1. Research papers (Peer-reviewed/UGC)" },
-  { key: "books_international", label: "2(a) Books - International publishers" },
-  { key: "books_national", label: "2(a) Books - National publishers" },
-  { key: "chapter_edited_book", label: "2(a) Chapter in edited book" },
-  { key: "editor_book_international", label: "2(a) Editor - International publisher" },
-  { key: "editor_book_national", label: "2(a) Editor - National publisher" },
-  { key: "translation_chapter_or_paper", label: "2(b) Translation - Chapter/Paper" },
-  { key: "translation_book", label: "2(b) Translation - Book" },
-  { key: "pedagogy_development", label: "3(a) Innovative pedagogy" },
-  { key: "curriculum_design", label: "3(b) Curriculum/course design" },
-  { key: "moocs_4quadrant", label: "3(c) MOOCs 4 quadrant" },
-  { key: "moocs_single_lecture", label: "3(c) MOOCs per module/lecture" },
-  { key: "moocs_content_writer", label: "3(c) MOOCs content writer/SME" },
-  { key: "moocs_coordinator", label: "3(c) MOOCs course coordinator" },
-  { key: "econtent_4quadrant_complete", label: "3(d) e-Content complete course/e-book" },
-  { key: "econtent_4quadrant_per_module", label: "3(d) e-Content per module" },
-  { key: "econtent_module_contribution", label: "3(d) e-Content module contribution" },
-  { key: "econtent_editor", label: "3(d) e-Content editor" },
-  { key: "phd_awarded", label: "4(a) Ph.D. awarded" },
-  { key: "phd_submitted", label: "4(a) Ph.D. submitted" },
-  { key: "mphil_pg_dissertation", label: "4(a) M.Phil./P.G. dissertation" },
-  { key: "research_project_above_10l", label: "4(b) Completed project >10 lakhs" },
-  { key: "research_project_below_10l", label: "4(b) Completed project <10 lakhs" },
-  { key: "research_project_ongoing_above_10l", label: "4(c) Ongoing project >10 lakhs" },
-  { key: "research_project_ongoing_below_10l", label: "4(c) Ongoing project <10 lakhs" },
-  { key: "consultancy", label: "4(d) Consultancy" },
-  { key: "patent_international", label: "5(a) Patent - International" },
-  { key: "patent_national", label: "5(a) Patent - National" },
-  { key: "policy_international", label: "6(b) Policy document - International" },
-  { key: "policy_national", label: "6(b) Policy document - National" },
-  { key: "policy_state", label: "6(b) Policy document - State" },
-  { key: "award_international", label: "7(c) Award/Fellowship - International" },
-  { key: "award_national", label: "7(c) Award/Fellowship - National" },
-  { key: "conference_international_abroad", label: "8. Conference/Invited - International (Abroad)" },
-  { key: "conference_international_country", label: "8. Conference/Invited - International (Within Country)" },
-  { key: "conference_national", label: "8. Conference/Invited - National" },
-  { key: "conference_state_university", label: "8. Conference/Invited - State/University" },
-  { key: "total", label: "Total (Table 2)" },
-];
+import {
+  DEFAULT_TABLE2_VERIFIED_KEYS,
+  getTable2VerifiedLabel,
+} from "../constants/verifiedGrading";
 
 const TABLE2_TOTAL_KEY = "total";
-const TABLE2_ITEM_KEYS = TABLE2_VERIFIED_FIELDS
-  .map((item) => item.key)
-  .filter((key) => key !== TABLE2_TOTAL_KEY);
-
-const buildEmptyTable2Verified = () =>
-  TABLE2_VERIFIED_FIELDS.reduce((acc, item) => {
-    acc[item.key] = "";
+const buildEmptyTable2Verified = (keys = DEFAULT_TABLE2_VERIFIED_KEYS) =>
+  keys.reduce((acc, key) => {
+    acc[key] = "";
     return acc;
   }, {});
 
@@ -67,14 +26,15 @@ const formatScoreValue = (value) => {
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
 };
 
-const computeTable2VerifiedTotal = (scores = {}) => {
-  const total = TABLE2_ITEM_KEYS.reduce((sum, key) => sum + parseScoreValue(scores[key]), 0);
+const computeTable2VerifiedTotal = (scores = {}, keys = DEFAULT_TABLE2_VERIFIED_KEYS) => {
+  const table2ItemKeys = keys.filter((key) => key !== TABLE2_TOTAL_KEY);
+  const total = table2ItemKeys.reduce((sum, key) => sum + parseScoreValue(scores[key]), 0);
   return formatScoreValue(total);
 };
 
-const withAutoTable2Total = (scores = {}) => ({
+const withAutoTable2Total = (scores = {}, keys = DEFAULT_TABLE2_VERIFIED_KEYS) => ({
   ...scores,
-  [TABLE2_TOTAL_KEY]: computeTable2VerifiedTotal(scores),
+  [TABLE2_TOTAL_KEY]: computeTable2VerifiedTotal(scores, keys),
 });
 
 const toNumber = (value) => {
@@ -199,19 +159,24 @@ export default function HODDashboard() {
           sppu_review_data: res.data.sppu_review_data || null,
           calculated_total_score: res.data.calculated_total_score,
         }));
+        const backendKeys = Array.isArray(res.data?.table2_verified_keys) && res.data.table2_verified_keys.length > 0
+          ? res.data.table2_verified_keys
+          : DEFAULT_TABLE2_VERIFIED_KEYS;
+        setTable2FieldKeys(backendKeys);
         const grading = res.data?.verified_grading || {};
         setTable1VerifiedTeaching(grading.table1_verified_teaching || "");
         setTable1VerifiedActivities(grading.table1_verified_activities || "");
         setTable2VerifiedScores(
           withAutoTable2Total({
-            ...buildEmptyTable2Verified(),
+            ...buildEmptyTable2Verified(backendKeys),
             ...(grading.table2_verified_scores || {}),
-          })
+          }, backendKeys)
         );
         const hodReview = res.data?.appraisal_data?.hod_review || {};
         setHodCommentsTable1(hodReview.comments_table1 || "");
         setHodCommentsTable2(hodReview.comments_table2 || "");
         setHodRemarksSuggestions(hodReview.remarks_suggestions || "");
+        setHodNotSatisfactoryJustification(hodReview.justification || "");
       } catch (err) {
         console.error("Failed to fetch details", err);
       }
@@ -222,12 +187,17 @@ export default function HODDashboard() {
 
   const [table1VerifiedTeaching, setTable1VerifiedTeaching] = useState("");
   const [table1VerifiedActivities, setTable1VerifiedActivities] = useState("");
+  const [table2FieldKeys, setTable2FieldKeys] = useState(DEFAULT_TABLE2_VERIFIED_KEYS);
   const [table2VerifiedScores, setTable2VerifiedScores] = useState(
-    withAutoTable2Total(buildEmptyTable2Verified())
+    withAutoTable2Total(
+      buildEmptyTable2Verified(DEFAULT_TABLE2_VERIFIED_KEYS),
+      DEFAULT_TABLE2_VERIFIED_KEYS
+    )
   );
   const [hodCommentsTable1, setHodCommentsTable1] = useState("");
   const [hodCommentsTable2, setHodCommentsTable2] = useState("");
   const [hodRemarksSuggestions, setHodRemarksSuggestions] = useState("");
+  const [hodNotSatisfactoryJustification, setHodNotSatisfactoryJustification] = useState("");
 
   /* ================= ACTIONS ================= */
   const handleStartReview = async () => {
@@ -271,10 +241,11 @@ export default function HODDashboard() {
           body: JSON.stringify({
             table1_verified_teaching: table1VerifiedTeaching,
             table1_verified_activities: table1VerifiedActivities,
-            table2_verified_scores: withAutoTable2Total(table2VerifiedScores),
+            table2_verified_scores: withAutoTable2Total(table2VerifiedScores, table2FieldKeys),
             hod_comments_table1: hodCommentsTable1,
             hod_comments_table2: hodCommentsTable2,
-            hod_remarks: hodRemarksSuggestions
+            hod_remarks: hodRemarksSuggestions,
+            hod_justification_not_satisfactory: hodNotSatisfactoryJustification
           })
         }
       );
@@ -285,10 +256,13 @@ export default function HODDashboard() {
       setSelectedSubmission(null);
       setTable1VerifiedTeaching("");
       setTable1VerifiedActivities("");
-      setTable2VerifiedScores(withAutoTable2Total(buildEmptyTable2Verified()));
+      setTable2VerifiedScores(
+        withAutoTable2Total(buildEmptyTable2Verified(table2FieldKeys), table2FieldKeys)
+      );
       setHodCommentsTable1("");
       setHodCommentsTable2("");
       setHodRemarksSuggestions("");
+      setHodNotSatisfactoryJustification("");
     } catch {
       alert("Approval failed");
     }
@@ -424,7 +398,7 @@ export default function HODDashboard() {
       withAutoTable2Total({
         ...prev,
         [key]: value,
-      })
+      }, table2FieldKeys)
     );
   };
 
@@ -557,31 +531,42 @@ export default function HODDashboard() {
                     Table 2 - Verified Column
                   </label>
                   <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '10px' }}>
-                    {TABLE2_VERIFIED_FIELDS.map((field) => (
-                      <div key={field.key} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 130px', gap: '10px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.9rem' }}>{field.label}</span>
+                    {table2FieldKeys.map((fieldKey) => (
+                      <div key={fieldKey} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 130px', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem' }}>{getTable2VerifiedLabel(fieldKey)}</span>
                         <span style={{ fontSize: '0.85rem', color: '#4b5563' }}>
-                          Self: {getTable2SelfValue(selectedSubmission?.sppu_review_data, field.key)}
+                          Self: {getTable2SelfValue(selectedSubmission?.sppu_review_data, fieldKey)}
                         </span>
                         <input
                           type="text"
-                          value={table2VerifiedScores[field.key] || ""}
-                          onChange={(e) => updateTable2Verified(field.key, e.target.value)}
-                          placeholder={field.key === TABLE2_TOTAL_KEY ? "Auto" : "Verified"}
-                          readOnly={field.key === TABLE2_TOTAL_KEY}
+                          value={table2VerifiedScores[fieldKey] || ""}
+                          onChange={(e) => updateTable2Verified(fieldKey, e.target.value)}
+                          placeholder={fieldKey === TABLE2_TOTAL_KEY ? "Auto" : "Verified"}
+                          readOnly={fieldKey === TABLE2_TOTAL_KEY}
                           style={{
                             width: '100%',
                             padding: '8px',
                             borderRadius: '4px',
                             border: '1px solid #ddd',
-                            background: field.key === TABLE2_TOTAL_KEY ? '#f3f4f6' : '#fff',
-                            color: field.key === TABLE2_TOTAL_KEY ? '#111827' : 'inherit',
-                            fontWeight: field.key === TABLE2_TOTAL_KEY ? 600 : 400,
+                            background: fieldKey === TABLE2_TOTAL_KEY ? '#f3f4f6' : '#fff',
+                            color: fieldKey === TABLE2_TOTAL_KEY ? '#111827' : 'inherit',
+                            fontWeight: fieldKey === TABLE2_TOTAL_KEY ? 600 : 400,
                           }}
                         />
                       </div>
                     ))}
                   </div>
+                </div>
+
+                <div style={{ marginTop: '10px' }}>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                    Justification of assessment of work as not satisfactory (optional)
+                  </label>
+                  <textarea
+                    placeholder="Enter justification if overall assessment is Not Satisfactory..."
+                    value={hodNotSatisfactoryJustification}
+                    onChange={(e) => setHodNotSatisfactoryJustification(e.target.value)}
+                  />
                 </div>
 
                 <div style={{ marginTop: '14px' }}>
