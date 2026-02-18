@@ -349,6 +349,11 @@ export default function FacultyAppraisalForm() {
           email: data.email || "",
           mobile: data.mobile_number || "",
           dateOfJoining: (data.date_of_joining || data.date_joined || "").toString().split("T")[0],
+          communicationAddress: data.address || "",
+          currentDesignation: data.designation || "",
+          payLevel: data.gradePay || "",
+          promotionDesignation: data.promotion_designation || "",
+          eligibilityDate: (data.eligibility_date || "").toString().split("T")[0],
         }));
       })
       .catch(err => console.error("Failed to fetch profile", err));
@@ -366,7 +371,12 @@ export default function FacultyAppraisalForm() {
 
           if (ui) {
             // BEST: Restore from full state
-            if (ui.generalInfo) setGeneralInfo(ui.generalInfo);
+            if (ui.generalInfo) {
+              const nonEmptyGeneralInfo = Object.fromEntries(
+                Object.entries(ui.generalInfo).filter(([, value]) => value !== "" && value !== null && value !== undefined)
+              );
+              setGeneralInfo(prev => ({ ...prev, ...nonEmptyGeneralInfo }));
+            }
             if (ui.teachingActivities) setTeachingActivities(ui.teachingActivities);
             if (ui.studentFeedback) setStudentFeedback(ui.studentFeedback);
             if (ui.sppuInvolvement) setSppuInvolvement(ui.sppuInvolvement);

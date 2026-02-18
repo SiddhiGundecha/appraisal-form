@@ -20,23 +20,39 @@ export default function Profile() {
   /* ================= PROFILE DATA ================= */
 
   const initialProfile = {
-    name: "",
+    full_name: "",
     designation: "",
-    joiningDate: "",
+    date_of_joining: "",
     department: "",
     address: "",
     email: "",
-    mobile: "",
+    mobile_number: "",
     gradePay: "",
-    promotionDesignation: "",
-    eligibilityDate: "",
-    assessmentPeriod: "",
-    role: "", // faculty / hod / principal / admin
+    promotion_designation: "",
+    eligibility_date: "",
+    assessment_period: "",
+    role: "",
+    username: "",
+    id: "",
   };
 
   const [profileData, setProfileData] = useState(initialProfile);
   const [editData, setEditData] = useState(initialProfile);
-  const hiddenAccountFields = new Set(["must_change_password"]);
+  const hiddenAccountFields = new Set(["must_change_password", "date_joined"]);
+  const readOnlyAccountFields = new Set([
+    "id",
+    "username",
+    "role",
+    "department",
+    "must_change_password",
+    "date_joined",
+  ]);
+
+  const formatAccountLabel = (key) =>
+    key
+      .replace(/_/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/\b\w/g, (ch) => ch.toUpperCase());
 
  useEffect(() => {
   API.get("me/")
@@ -220,6 +236,14 @@ export default function Profile() {
       const formData = new FormData();
       formData.append("full_name", editData.full_name || "");
       formData.append("mobile_number", editData.mobile_number || "");
+      formData.append("email", editData.email || "");
+      formData.append("designation", editData.designation || "");
+      formData.append("address", editData.address || "");
+      formData.append("gradePay", editData.gradePay || "");
+      formData.append("promotion_designation", editData.promotion_designation || "");
+      formData.append("eligibility_date", editData.eligibility_date || "");
+      formData.append("assessment_period", editData.assessment_period || "");
+      formData.append("date_of_joining", editData.date_of_joining || "");
       if (profileImageFile) {
         formData.append("profile_image", profileImageFile);
       }
@@ -387,7 +411,7 @@ export default function Profile() {
                 .map(([k, v]) => (
                 <div key={k} className="form-field">
                   <label className="label">
-                    {k.replace(/([A-Z])/g, " $1")}
+                      {formatAccountLabel(k)}
                   </label>
 
                   <input
@@ -395,32 +419,10 @@ export default function Profile() {
                     value={v}
                     onChange={handleProfileChange}
                     disabled={
-                      !isEditing ||
-                      [
-                        "id",
-                        "username",
-                        "email",
-                        "role",
-                        "department",
-                        "date_joined",
-                        "date_of_joining",
-                        "must_change_password",
-                        "designation",
-                      ].includes(k)
+                      !isEditing || readOnlyAccountFields.has(k)
                     }
                     className={`input ${
-                      !isEditing ||
-                      [
-                        "id",
-                        "username",
-                        "email",
-                        "role",
-                        "department",
-                        "date_joined",
-                        "date_of_joining",
-                        "must_change_password",
-                        "designation",
-                      ].includes(k)
+                      !isEditing || readOnlyAccountFields.has(k)
                         ? "disabled"
                         : ""
                     }`}

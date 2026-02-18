@@ -611,15 +611,23 @@ export default function PrincipalDashboard() {
           <h1>Principal Dashboard</h1>
           <p className="subtitle">Final Approval of Appraisal Forms</p>
         </div>
-        <button
-          className="logout-btn"
-          onClick={() => {
-            localStorage.clear();
-            navigate("/login");
-          }}
-        >
-          Logout
-        </button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <button
+            className="primary-btn"
+            onClick={() => navigate("/faculty/profile")}
+          >
+            My Profile
+          </button>
+          <button
+            className="logout-btn"
+            onClick={() => {
+              localStorage.clear();
+              navigate("/login");
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="tab-row">
