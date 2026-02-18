@@ -75,6 +75,12 @@ const setupResponseInterceptor = (client) => {
     async (error) => {
       const originalRequest = error.config || {};
       const status = error?.response?.status;
+      const detail = (error?.response?.data?.detail || "").toString().toLowerCase();
+
+      if (status === 401 && detail.includes("password change required")) {
+        window.location.replace("/faculty/profile?tab=password");
+        return Promise.reject(error);
+      }
 
       if (status !== 401 || originalRequest._retry || shouldSkipAuthHandling(originalRequest.url)) {
         return Promise.reject(error);

@@ -17,9 +17,6 @@ import PrincipalDashboard from "../pages/PrincipalDashboard";
 import FacultyAppraisalStatus from "../pages/faculty/FacultyAppraisalStatus";
 
 
-import CreateAccount from "../pages/CreateAccount";
-
-
 <Route
   path="/faculty/appraisal/status"
   element={<FacultyAppraisalStatus />}
@@ -50,8 +47,6 @@ export default function AppRouter() {
   path="/faculty/appraisal/status"
   element={<FacultyAppraisalStatus />}
 />
-<Route path="/create-account" element={<CreateAccount />} />
-
 <Route path="/hod/appraisal-form" element={<AppraisalForm />} />
 
 

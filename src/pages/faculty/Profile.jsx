@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../../styles/profile.css";
 import API from "../../api";
 
@@ -7,8 +7,13 @@ const DEFAULT_AVATAR = "https://i.pravatar.cc/300?img=12";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [activeTab, setActiveTab] = useState("account");
+  const [activeTab, setActiveTab] = useState(
+    new URLSearchParams(location.search).get("tab") === "password"
+      ? "password"
+      : "account"
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
 
@@ -31,6 +36,7 @@ export default function Profile() {
 
   const [profileData, setProfileData] = useState(initialProfile);
   const [editData, setEditData] = useState(initialProfile);
+  const hiddenAccountFields = new Set(["must_change_password"]);
 
  useEffect(() => {
   API.get("me/")
@@ -213,7 +219,6 @@ export default function Profile() {
     try {
       const formData = new FormData();
       formData.append("full_name", editData.full_name || "");
-      formData.append("designation", editData.designation || "");
       formData.append("mobile_number", editData.mobile_number || "");
       if (profileImageFile) {
         formData.append("profile_image", profileImageFile);
@@ -252,11 +257,46 @@ export default function Profile() {
     newPass: "",
     confirm: "",
   });
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
 
   const passwordMismatch =
     password.newPass &&
     password.confirm &&
     password.newPass !== password.confirm;
+
+  const updatePassword = async () => {
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (!password.current || !password.newPass || !password.confirm) {
+      setPasswordError("All password fields are required.");
+      return;
+    }
+    if (passwordMismatch) {
+      setPasswordError("Password does not match.");
+      return;
+    }
+
+    try {
+      await API.post("auth/change-password/", {
+        old_password: password.current,
+        new_password: password.newPass,
+      });
+      setPassword({ current: "", newPass: "", confirm: "" });
+      const res = await API.get("me/");
+      const { profile_image, ...profileFields } = res.data || {};
+      setProfileData(profileFields);
+      setEditData(profileFields);
+      if (profile_image) {
+        setProfileImage(profile_image);
+        setSavedProfileImage(profile_image);
+      }
+      setPasswordSuccess("Password updated successfully.");
+    } catch (err) {
+      setPasswordError(err?.response?.data?.detail || "Failed to update password.");
+    }
+  };
 
   return (
     <div className="dashboard">
@@ -342,33 +382,49 @@ export default function Profile() {
             </div>
 
             <div className="form">
-              {Object.entries(editData).map(([k, v]) => (
+              {Object.entries(editData)
+                .filter(([k]) => !hiddenAccountFields.has(k))
+                .map(([k, v]) => (
                 <div key={k} className="form-field">
                   <label className="label">
                     {k.replace(/([A-Z])/g, " $1")}
                   </label>
 
-                  {k === "designation" && isEditing ? (
-                    <select
-                      name={k}
-                      value={v}
-                      onChange={handleProfileChange}
-                      className="select"
-                    >
-                      <option>Teaching Staff</option>
-                      <option>HOD</option>
-                      <option>Principal</option>
-                      <option>Admin</option>
-                    </select>
-                  ) : (
-                    <input
-                      name={k}
-                      value={v}
-                      onChange={handleProfileChange}
-                      disabled={!isEditing}
-                      className={`input ${!isEditing ? "disabled" : ""}`}
-                    />
-                  )}
+                  <input
+                    name={k}
+                    value={v}
+                    onChange={handleProfileChange}
+                    disabled={
+                      !isEditing ||
+                      [
+                        "id",
+                        "username",
+                        "email",
+                        "role",
+                        "department",
+                        "date_joined",
+                        "date_of_joining",
+                        "must_change_password",
+                        "designation",
+                      ].includes(k)
+                    }
+                    className={`input ${
+                      !isEditing ||
+                      [
+                        "id",
+                        "username",
+                        "email",
+                        "role",
+                        "department",
+                        "date_joined",
+                        "date_of_joining",
+                        "must_change_password",
+                        "designation",
+                      ].includes(k)
+                        ? "disabled"
+                        : ""
+                    }`}
+                  />
                 </div>
               ))}
             </div>
@@ -412,8 +468,12 @@ export default function Profile() {
             {passwordMismatch && (
               <p className="error">Password does not match</p>
             )}
+            {passwordError && <p className="error">{passwordError}</p>}
+            {passwordSuccess && <p className="success">{passwordSuccess}</p>}
 
-            <button className="update-btn">Update Password</button>
+            <button className="update-btn" onClick={updatePassword}>
+              Update Password
+            </button>
           </div>
         )}
       </div>

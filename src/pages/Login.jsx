@@ -53,6 +53,11 @@ export default function Login() {
 
       localStorage.setItem("loggedInUser", JSON.stringify(user));
 
+      if (user.must_change_password) {
+        navigate("/faculty/profile?tab=password");
+        return;
+      }
+
       /* =======================
          6. ROLE-BASED ROUTING
          ======================= */
@@ -69,7 +74,7 @@ export default function Login() {
           navigate("/principal/dashboard");
           break;
 
-        case "Admin":
+        case "ADMIN":
           navigate("/admin/dashboard");
           break;
 
@@ -141,16 +146,6 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="signup-prompt">
-          Don't have an account?{" "}
-          <button
-            type="button"
-            className="signup-link"
-            onClick={() => navigate("/create-account")}
-          >
-            Create one now
-          </button>
-        </div>
       </div>
     </div>
   );
