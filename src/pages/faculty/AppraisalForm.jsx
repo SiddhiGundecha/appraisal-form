@@ -115,14 +115,6 @@ export default function FacultyAppraisalForm() {
 
 
 
-  const handleArrayChange = (setter, index, e) => {
-    setter(prev => {
-      const copy = [...prev];
-      copy[index][e.target.name] = e.target.value;
-      return copy;
-    });
-  };
-
   /*LAST BLOCK OF <PAYLOAD></PAYLOAD>*/
   const [pbasScores, setPbasScores] = useState({
     teaching_process: 0,
@@ -201,6 +193,32 @@ export default function FacultyAppraisalForm() {
     "Swachh Bharat / Unnat Bharat / NSS / NCC Activity",
     "Any other Activity"
   ];
+
+  const getInstitutePerActivityLimit = (activityName = "") => {
+    const text = String(activityName || "").toUpperCase();
+    if (text.includes("HOD") || text.includes("DEAN")) return 4;
+    if (
+      text.includes("COORDINATOR") &&
+      (text.includes("APPOINTED") ||
+        text.includes("HEAD OF INSTITUTE") ||
+        text.includes("HOI"))
+    ) {
+      return 2;
+    }
+    if (text.includes("ORGANIZED") && text.includes("CONFERENCE")) return 2;
+    if (
+      (text.includes("FDP") ||
+        text.includes("CO-COORDINATOR") ||
+        text.includes("COORDINATOR")) &&
+      text.includes("CONFERENCE")
+    ) {
+      return 1;
+    }
+    return 4;
+  };
+
+  const getDepartmentPerActivityLimit = () => 3;
+  const getSocietyPerActivityLimit = () => 5;
 
 
 
@@ -887,6 +905,67 @@ export default function FacultyAppraisalForm() {
     return newErrors;
   };
 
+  const validateStep3Credits = () => {
+    const newErrors = {};
+
+    let deptTotal = 0;
+    departmentalActivities.forEach((row, index) => {
+      const raw = row.credit;
+      if (raw === "" || raw === null || raw === undefined) return;
+      const val = Number(raw);
+      if (!Number.isFinite(val) || val < 0) {
+        newErrors[`dept_${index}_credit`] = "Credit must be a non-negative number";
+        return;
+      }
+      if (val > 3) {
+        newErrors[`dept_${index}_credit`] = "Departmental credit cannot exceed 3 per activity";
+      }
+      deptTotal += val;
+    });
+    if (deptTotal > 20) {
+      newErrors.department_total = "Total departmental credits cannot exceed 20";
+    }
+
+    let instituteTotal = 0;
+    instituteActivities.forEach((row, index) => {
+      const raw = row.credit;
+      if (raw === "" || raw === null || raw === undefined) return;
+      const val = Number(raw);
+      if (!Number.isFinite(val) || val < 0) {
+        newErrors[`inst_${index}_credit`] = "Credit must be a non-negative number";
+        return;
+      }
+      const limit = getInstitutePerActivityLimit(row.activity);
+      if (val > limit) {
+        newErrors[`inst_${index}_credit`] = `Credit cannot exceed ${limit} for selected institute activity`;
+      }
+      instituteTotal += val;
+    });
+    if (instituteTotal > 10) {
+      newErrors.institute_total = "Total institute credits cannot exceed 10";
+    }
+
+    let societyTotal = 0;
+    societyActivities.forEach((row, index) => {
+      const raw = row.credit;
+      if (raw === "" || raw === null || raw === undefined) return;
+      const val = Number(raw);
+      if (!Number.isFinite(val) || val < 0) {
+        newErrors[`soc_${index}_credit`] = "Credit must be a non-negative number";
+        return;
+      }
+      if (val > 5) {
+        newErrors[`soc_${index}_credit`] = "Society credit cannot exceed 5 per activity";
+      }
+      societyTotal += val;
+    });
+    if (societyTotal > 10) {
+      newErrors.society_total = "Total society credits cannot exceed 10";
+    }
+
+    return newErrors;
+  };
+
   const showValidationSummary = (validationErrors) => {
     const messages = Object.values(validationErrors || {}).filter(Boolean);
     if (!messages.length) return;
@@ -1159,6 +1238,14 @@ export default function FacultyAppraisalForm() {
       showValidationSummary(sppuErrors);
       return;
     }
+
+    const step3CreditErrors = validateStep3Credits();
+    if (Object.keys(step3CreditErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...step3CreditErrors }));
+      setCurrentStep(3);
+      showValidationSummary(step3CreditErrors);
+      return;
+    }
     // 1️⃣ Declaration check
     if (!declarationAccepted) {
       alert("Please accept the declaration.");
@@ -1211,8 +1298,19 @@ export default function FacultyAppraisalForm() {
       console.error("Response:", error.response?.data);
       console.error("Full error:", error);
 
-      alert("Submission failed. Please try again.");
+      const message = error?.response?.data?.error || "Submission failed. Please try again.";
+      alert(message);
     }
+  };
+
+  const handleStep3Next = () => {
+    const step3CreditErrors = validateStep3Credits();
+    if (Object.keys(step3CreditErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...step3CreditErrors }));
+      showValidationSummary(step3CreditErrors);
+      return;
+    }
+    setCurrentStep(4);
   };
 
   // ================= DEPARTMENTAL ACTIVITIES HANDLERS =================
@@ -1222,6 +1320,46 @@ export default function FacultyAppraisalForm() {
       copy[index][field] = value;
       return copy;
     });
+    if (field === "credit") {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[`dept_${index}_credit`];
+        delete copy.department_total;
+        return copy;
+      });
+    }
+  };
+
+  const handleInstituteChange = (index, field, value) => {
+    setInstituteActivities((prev) => {
+      const copy = [...prev];
+      copy[index][field] = value;
+      return copy;
+    });
+    if (field === "credit" || field === "activity") {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[`inst_${index}_credit`];
+        delete copy.institute_total;
+        return copy;
+      });
+    }
+  };
+
+  const handleSocietyChange = (index, field, value) => {
+    setSocietyActivities((prev) => {
+      const copy = [...prev];
+      copy[index][field] = value;
+      return copy;
+    });
+    if (field === "credit") {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[`soc_${index}_credit`];
+        delete copy.society_total;
+        return copy;
+      });
+    }
   };
 
   const addDeptRow = () => {
@@ -1913,6 +2051,9 @@ export default function FacultyAppraisalForm() {
               <hr />
               {/*new added */}
               <h4>C. Departmental Activities (Max Credit 20)</h4>
+              {errors.department_total && (
+                <div className="field-error">{errors.department_total}</div>
+              )}
 
               {departmentalActivities.map((row, index) => (
                 <div className="activity-card" key={index}>
@@ -1934,7 +2075,9 @@ export default function FacultyAppraisalForm() {
                     >
                       <option value="">Select Activity</option>
                       {DEPARTMENTAL_ACTIVITIES.map((act, i) => (
-                        <option key={i} value={act}>{act}</option>
+                        <option key={i} value={act}>
+                          {`${act} (Max ${getDepartmentPerActivityLimit()})`}
+                        </option>
                       ))}
                     </select>
 
@@ -1946,6 +2089,9 @@ export default function FacultyAppraisalForm() {
                         handleDeptChange(index, "credit", e.target.value)
                       }
                     />
+                    <div className="section-note" style={{ marginTop: "4px" }}>
+                      Max allowed: {getDepartmentPerActivityLimit()}
+                    </div>
 
                     <input
                       placeholder="Criteria (e.g. 3 Point / semester)"
@@ -1973,6 +2119,9 @@ export default function FacultyAppraisalForm() {
                       </button>
                     )}
                   </div>
+                  {errors[`dept_${index}_credit`] && (
+                    <div className="field-error">{errors[`dept_${index}_credit`]}</div>
+                  )}
 
                   {row.activity === "Any other Activity" && (
                     <div className="activity-row">
@@ -2003,6 +2152,9 @@ export default function FacultyAppraisalForm() {
               <hr />
               {/*new added */}
               <h4>D. Institute Activities (Max Credit 10)</h4>
+              {errors.institute_total && (
+                <div className="field-error">{errors.institute_total}</div>
+              )}
 
               {instituteActivities.map((row, index) => (
                 <div className="activity-card" key={index}>
@@ -2013,7 +2165,7 @@ export default function FacultyAppraisalForm() {
                       placeholder="Semester"
                       value={row.semester}
                       onChange={(e) =>
-                        handleArrayChange(setInstituteActivities, index, e)
+                        handleInstituteChange(index, "semester", e.target.value)
                       }
                     />
 
@@ -2021,12 +2173,14 @@ export default function FacultyAppraisalForm() {
                       name="activity"
                       value={row.activity}
                       onChange={(e) =>
-                        handleArrayChange(setInstituteActivities, index, e)
+                        handleInstituteChange(index, "activity", e.target.value)
                       }
                     >
                       <option value="">Select Activity</option>
                       {INSTITUTE_ACTIVITIES.map((act, i) => (
-                        <option key={i} value={act}>{act}</option>
+                        <option key={i} value={act}>
+                          {`${act} (Max ${getInstitutePerActivityLimit(act)})`}
+                        </option>
                       ))}
                     </select>
 
@@ -2036,16 +2190,19 @@ export default function FacultyAppraisalForm() {
                       placeholder="Credit Point"
                       value={row.credit}
                       onChange={(e) =>
-                        handleArrayChange(setInstituteActivities, index, e)
+                        handleInstituteChange(index, "credit", e.target.value)
                       }
                     />
+                    <div className="section-note" style={{ marginTop: "4px" }}>
+                      Max allowed: {row.activity ? getInstitutePerActivityLimit(row.activity) : "Select activity"}
+                    </div>
 
                     <input
                       name="criteria"
                       placeholder="Criteria"
                       value={row.criteria}
                       onChange={(e) =>
-                        handleArrayChange(setInstituteActivities, index, e)
+                        handleInstituteChange(index, "criteria", e.target.value)
                       }
                     />
 
@@ -2054,7 +2211,7 @@ export default function FacultyAppraisalForm() {
                       placeholder="Enclosure No."
                       value={row.enclosureNo}
                       onChange={(e) =>
-                        handleArrayChange(setInstituteActivities, index, e)
+                        handleInstituteChange(index, "enclosureNo", e.target.value)
                       }
                     />
 
@@ -2070,6 +2227,9 @@ export default function FacultyAppraisalForm() {
                       </button>
                     )}
                   </div>
+                  {errors[`inst_${index}_credit`] && (
+                    <div className="field-error">{errors[`inst_${index}_credit`]}</div>
+                  )}
 
                   {row.activity === "Any other Activity" && (
                     <div className="activity-row">
@@ -2078,7 +2238,7 @@ export default function FacultyAppraisalForm() {
                         placeholder="Specify other institute activity"
                         value={row.otherActivity}
                         onChange={(e) =>
-                          handleArrayChange(setInstituteActivities, index, e)
+                          handleInstituteChange(index, "otherActivity", e.target.value)
                         }
                       />
                     </div>
@@ -2108,6 +2268,9 @@ export default function FacultyAppraisalForm() {
 
               {/* ================= STEP 3C: CONTRIBUTION TO SOCIETY ================= */}
               <h4>E. Contribution to Society (Max Credit 10)</h4>
+              {errors.society_total && (
+                <div className="field-error">{errors.society_total}</div>
+              )}
 
               {societyActivities.map((row, index) => (
                 <div className="activity-card" key={index}>
@@ -2117,12 +2280,14 @@ export default function FacultyAppraisalForm() {
                       name="activity"
                       value={row.activity}
                       onChange={(e) =>
-                        handleArrayChange(setSocietyActivities, index, e)
+                        handleSocietyChange(index, "activity", e.target.value)
                       }
                     >
                       <option value="">Select Activity</option>
                       {SOCIETY_ACTIVITIES.map((act, i) => (
-                        <option key={i} value={act}>{act}</option>
+                        <option key={i} value={act}>
+                          {`${act} (Max ${getSocietyPerActivityLimit()})`}
+                        </option>
                       ))}
                     </select>
 
@@ -2131,7 +2296,7 @@ export default function FacultyAppraisalForm() {
                       placeholder="Semester / Year"
                       value={row.semester}
                       onChange={(e) =>
-                        handleArrayChange(setSocietyActivities, index, e)
+                        handleSocietyChange(index, "semester", e.target.value)
                       }
                     />
 
@@ -2140,16 +2305,19 @@ export default function FacultyAppraisalForm() {
                       placeholder="Credit Point"
                       value={row.credit}
                       onChange={(e) =>
-                        handleArrayChange(setSocietyActivities, index, e)
+                        handleSocietyChange(index, "credit", e.target.value)
                       }
                     />
+                    <div className="section-note" style={{ marginTop: "4px" }}>
+                      Max allowed: {getSocietyPerActivityLimit()}
+                    </div>
 
                     <input
                       name="criteria"
                       placeholder="Criteria (e.g. 5 Point / event)"
                       value={row.criteria}
                       onChange={(e) =>
-                        handleArrayChange(setSocietyActivities, index, e)
+                        handleSocietyChange(index, "criteria", e.target.value)
                       }
                     />
 
@@ -2158,7 +2326,7 @@ export default function FacultyAppraisalForm() {
                       placeholder="Enclosure No."
                       value={row.enclosureNo}
                       onChange={(e) =>
-                        handleArrayChange(setSocietyActivities, index, e)
+                        handleSocietyChange(index, "enclosureNo", e.target.value)
                       }
                     />
 
@@ -2174,6 +2342,9 @@ export default function FacultyAppraisalForm() {
                       </button>
                     )}
                   </div>
+                  {errors[`soc_${index}_credit`] && (
+                    <div className="field-error">{errors[`soc_${index}_credit`]}</div>
+                  )}
 
                   {row.activity === "Any other Activity" && (
                     <div className="activity-row">
@@ -2182,7 +2353,7 @@ export default function FacultyAppraisalForm() {
                         placeholder="Specify other social activity"
                         value={row.otherActivity}
                         onChange={(e) =>
-                          handleArrayChange(setSocietyActivities, index, e)
+                          handleSocietyChange(index, "otherActivity", e.target.value)
                         }
                       />
                     </div>
@@ -2223,7 +2394,7 @@ export default function FacultyAppraisalForm() {
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => setCurrentStep(4)}
+                onClick={handleStep3Next}
               >
                 Next →
               </button>
