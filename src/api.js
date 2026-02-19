@@ -24,11 +24,11 @@ if (typeof window !== "undefined" && typeof window.fetch === "function") {
       return originalFetch(rewrite(input), init);
     }
 
-    if (input instanceof Request) {
-      const rewrittenRequest = new Request(rewrite(input.url), input);
-      return originalFetch(rewrittenRequest, init);
+    if (input instanceof URL) {
+      return originalFetch(rewrite(input.toString()), init);
     }
 
+    // Leave Request and other input types untouched to avoid runtime incompatibilities.
     return originalFetch(input, init);
   };
 }
