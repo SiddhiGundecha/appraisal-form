@@ -4,10 +4,34 @@ const normalizeBaseUrl = (url) => (url.endsWith("/") ? url : `${url}/`);
 const API_BASE_URL = normalizeBaseUrl(
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/"
 );
+const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
 const API = axios.create({
   baseURL: API_BASE_URL,
 });
+
+// Backward-compatible guard: rewrite legacy hardcoded localhost fetch URLs
+// to the configured backend origin in production.
+if (typeof window !== "undefined" && typeof window.fetch === "function") {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    const rewrite = (url) =>
+      url
+        .replace("http://127.0.0.1:8000", BACKEND_ORIGIN)
+        .replace("http://localhost:8000", BACKEND_ORIGIN);
+
+    if (typeof input === "string") {
+      return originalFetch(rewrite(input), init);
+    }
+
+    if (input instanceof Request) {
+      const rewrittenRequest = new Request(rewrite(input.url), input);
+      return originalFetch(rewrittenRequest, init);
+    }
+
+    return originalFetch(input, init);
+  };
+}
 
 const PUBLIC_AUTH_PATHS = [
   "/token/",
