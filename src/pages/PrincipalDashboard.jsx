@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/HodDashboard.css";
+import "../styles/HODDashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
 import {
   DEFAULT_TABLE2_VERIFIED_KEYS,
@@ -719,5 +719,6 @@ export default function PrincipalDashboard() {
     </div>
   );
 }
+
 
 
