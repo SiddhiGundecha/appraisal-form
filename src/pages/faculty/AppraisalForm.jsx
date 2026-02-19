@@ -124,6 +124,7 @@ export default function FacultyAppraisalForm() {
 
   const user = JSON.parse(localStorage.getItem("loggedInUser") || "{}");
   const isHOD = location.pathname.startsWith("/hod") || user.role === "HOD";
+  const refreshStateKey = `appraisal-form-refresh-v1:${isHOD ? "hod" : "faculty"}:${user.id || user.username || "anon"}`;
 
   const submitEndpoint = isHOD
     ? "/hod/submit/"
@@ -707,6 +708,73 @@ export default function FacultyAppraisalForm() {
   /* ================= SUBMISSION ================= */
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [formStatus, setFormStatus] = useState("draft");
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(refreshStateKey);
+      if (!raw) return;
+      const cached = JSON.parse(raw);
+      if (!cached || typeof cached !== "object") return;
+
+      if (typeof cached.currentStep === "number") setCurrentStep(cached.currentStep);
+      if (cached.generalInfo) setGeneralInfo((prev) => ({ ...prev, ...cached.generalInfo }));
+      if (Array.isArray(cached.teachingActivities) && cached.teachingActivities.length) setTeachingActivities(cached.teachingActivities);
+      if (Array.isArray(cached.studentFeedback) && cached.studentFeedback.length) setStudentFeedback(cached.studentFeedback);
+      if (Array.isArray(cached.departmentalActivities) && cached.departmentalActivities.length) setDepartmentalActivities(cached.departmentalActivities);
+      if (Array.isArray(cached.instituteActivities) && cached.instituteActivities.length) setInstituteActivities(cached.instituteActivities);
+      if (Array.isArray(cached.societyActivities) && cached.societyActivities.length) setSocietyActivities(cached.societyActivities);
+      if (cached.acrDetails) setAcrDetails(cached.acrDetails);
+      if (cached.research) setResearch(cached.research);
+      if (cached.pbasScores) setPbasScores(cached.pbasScores);
+      if (typeof cached.justification === "string") setJustification(cached.justification);
+      if (Array.isArray(cached.categoryTwo)) setCategoryTwo(cached.categoryTwo);
+      if (typeof cached.declarationAccepted === "boolean") setDeclarationAccepted(cached.declarationAccepted);
+      if (typeof cached.formStatus === "string") setFormStatus(cached.formStatus);
+    } catch (error) {
+      console.error("Failed to restore refresh state", error);
+    }
+  }, [refreshStateKey]);
+
+  useEffect(() => {
+    const snapshot = {
+      currentStep,
+      generalInfo,
+      teachingActivities,
+      studentFeedback,
+      departmentalActivities,
+      instituteActivities,
+      societyActivities,
+      acrDetails,
+      research,
+      pbasScores,
+      justification,
+      categoryTwo,
+      declarationAccepted,
+      formStatus,
+    };
+
+    try {
+      sessionStorage.setItem(refreshStateKey, JSON.stringify(snapshot));
+    } catch (error) {
+      console.error("Failed to persist refresh state", error);
+    }
+  }, [
+    refreshStateKey,
+    currentStep,
+    generalInfo,
+    teachingActivities,
+    studentFeedback,
+    departmentalActivities,
+    instituteActivities,
+    societyActivities,
+    acrDetails,
+    research,
+    pbasScores,
+    justification,
+    categoryTwo,
+    declarationAccepted,
+    formStatus,
+  ]);
 
   // DEPRECATED: Use buildAppraisalPayload instead to avoid data loss
   const buildBackendPayload = (submitAction = "draft") => {

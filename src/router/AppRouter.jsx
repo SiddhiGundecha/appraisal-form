@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 
 import Login from "../pages/Login";
 import ForgotPassword from "../pages/ForgotPassword";
@@ -14,6 +15,16 @@ import HODDashboard from "../pages/HODDashboard";
 import PrincipalDashboard from "../pages/PrincipalDashboard";
 
 export default function AppRouter() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const path = `${location.pathname}${location.search || ""}`;
+    const isAuthPage = ["/login", "/forgot-password", "/reset-password"].includes(location.pathname);
+    if (!isAuthPage) {
+      sessionStorage.setItem("lastRoute", path);
+    }
+  }, [location.pathname, location.search]);
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" />} />

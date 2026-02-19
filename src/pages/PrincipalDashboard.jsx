@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/HODDashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
+import useSessionState from "../hooks/useSessionState";
 import {
   DEFAULT_TABLE2_VERIFIED_KEYS,
   getTable2VerifiedLabel,
@@ -72,9 +73,9 @@ const getTable2SelfValue = (reviewData, key) => {
 export default function PrincipalDashboard() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("pending");
-  const [selected, setSelected] = useState(null);
-  const [remarks, setRemarks] = useState("");
+  const [activeTab, setActiveTab] = useSessionState("principal.activeTab", "pending");
+  const [selected, setSelected] = useSessionState("principal.selected", null);
+  const [remarks, setRemarks] = useSessionState("principal.remarks", "");
   const token = localStorage.getItem("access");
 
   const handleStartReview = async () => {
@@ -314,10 +315,11 @@ export default function PrincipalDashboard() {
     fetchDetails();
   }, [selected?.id]);
 
-  const [table1VerifiedTeaching, setTable1VerifiedTeaching] = useState("");
-  const [table1VerifiedActivities, setTable1VerifiedActivities] = useState("");
-  const [table2FieldKeys, setTable2FieldKeys] = useState(DEFAULT_TABLE2_VERIFIED_KEYS);
-  const [table2VerifiedScores, setTable2VerifiedScores] = useState(
+  const [table1VerifiedTeaching, setTable1VerifiedTeaching] = useSessionState("principal.table1VerifiedTeaching", "");
+  const [table1VerifiedActivities, setTable1VerifiedActivities] = useSessionState("principal.table1VerifiedActivities", "");
+  const [table2FieldKeys, setTable2FieldKeys] = useSessionState("principal.table2FieldKeys", DEFAULT_TABLE2_VERIFIED_KEYS);
+  const [table2VerifiedScores, setTable2VerifiedScores] = useSessionState(
+    "principal.table2VerifiedScores",
     withAutoTable2Total(
       buildEmptyTable2Verified(DEFAULT_TABLE2_VERIFIED_KEYS),
       DEFAULT_TABLE2_VERIFIED_KEYS

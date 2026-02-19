@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../../styles/profile.css";
 import API from "../../api";
+import useSessionState from "../../hooks/useSessionState";
 
 const DEFAULT_AVATAR = "https://i.pravatar.cc/300?img=12";
 
@@ -9,10 +10,13 @@ export default function Profile() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [activeTab, setActiveTab] = useState(
+  const tabFromQuery =
     new URLSearchParams(location.search).get("tab") === "password"
       ? "password"
-      : "account"
+      : "account";
+  const [activeTab, setActiveTab] = useSessionState(
+    "profile.activeTab",
+    tabFromQuery
   );
   const [isEditing, setIsEditing] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
@@ -564,3 +568,4 @@ export default function Profile() {
     </div>
   );
 }
+

@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import "../styles/Login.css";
+import useSessionState from "../hooks/useSessionState";
 
 export default function Login() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useSessionState("login.email", "");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false); // kept for UI only
-  const [error, setError] = useState("");
+  const [remember, setRemember] = useSessionState("login.remember", false);
+  const [error, setError] = useSessionState("login.error", "");
+
+  useEffect(() => {
+    const access = localStorage.getItem("access") || sessionStorage.getItem("access");
+    const lastRoute = sessionStorage.getItem("lastRoute");
+    if (access && lastRoute && lastRoute !== "/login") {
+      navigate(lastRoute, { replace: true });
+    }
+  }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -38,6 +47,12 @@ export default function Login() {
 
       if (user.must_change_password) {
         navigate("/faculty/profile?tab=password");
+        return;
+      }
+
+      const lastRoute = sessionStorage.getItem("lastRoute");
+      if (lastRoute && !["/login", "/forgot-password", "/reset-password"].includes(lastRoute)) {
+        navigate(lastRoute);
         return;
       }
 

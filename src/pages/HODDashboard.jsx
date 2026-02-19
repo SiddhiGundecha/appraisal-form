@@ -4,6 +4,7 @@ import API from "../api";
 import "../styles/HODDashboard.css";
 import "../styles/dashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
+import useSessionState from "../hooks/useSessionState";
 import {
   DEFAULT_TABLE2_VERIFIED_KEYS,
   getTable2VerifiedLabel,
@@ -75,9 +76,9 @@ export default function HODDashboard() {
   const navigate = useNavigate();
   const token = localStorage.getItem("access");
 
-  const [activeTab, setActiveTab] = useState("pending");
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
-  const [remarks, setRemarks] = useState("");
+  const [activeTab, setActiveTab] = useSessionState("hod.activeTab", "pending");
+  const [selectedSubmission, setSelectedSubmission] = useSessionState("hod.selectedSubmission", null);
+  const [remarks, setRemarks] = useSessionState("hod.remarks", "");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -185,19 +186,20 @@ export default function HODDashboard() {
     fetchDetails();
   }, [selectedSubmission?.appraisal_id]);
 
-  const [table1VerifiedTeaching, setTable1VerifiedTeaching] = useState("");
-  const [table1VerifiedActivities, setTable1VerifiedActivities] = useState("");
-  const [table2FieldKeys, setTable2FieldKeys] = useState(DEFAULT_TABLE2_VERIFIED_KEYS);
-  const [table2VerifiedScores, setTable2VerifiedScores] = useState(
+  const [table1VerifiedTeaching, setTable1VerifiedTeaching] = useSessionState("hod.table1VerifiedTeaching", "");
+  const [table1VerifiedActivities, setTable1VerifiedActivities] = useSessionState("hod.table1VerifiedActivities", "");
+  const [table2FieldKeys, setTable2FieldKeys] = useSessionState("hod.table2FieldKeys", DEFAULT_TABLE2_VERIFIED_KEYS);
+  const [table2VerifiedScores, setTable2VerifiedScores] = useSessionState(
+    "hod.table2VerifiedScores",
     withAutoTable2Total(
       buildEmptyTable2Verified(DEFAULT_TABLE2_VERIFIED_KEYS),
       DEFAULT_TABLE2_VERIFIED_KEYS
     )
   );
-  const [hodCommentsTable1, setHodCommentsTable1] = useState("");
-  const [hodCommentsTable2, setHodCommentsTable2] = useState("");
-  const [hodRemarksSuggestions, setHodRemarksSuggestions] = useState("");
-  const [hodNotSatisfactoryJustification, setHodNotSatisfactoryJustification] = useState("");
+  const [hodCommentsTable1, setHodCommentsTable1] = useSessionState("hod.hodCommentsTable1", "");
+  const [hodCommentsTable2, setHodCommentsTable2] = useSessionState("hod.hodCommentsTable2", "");
+  const [hodRemarksSuggestions, setHodRemarksSuggestions] = useSessionState("hod.hodRemarksSuggestions", "");
+  const [hodNotSatisfactoryJustification, setHodNotSatisfactoryJustification] = useSessionState("hod.hodNotSatisfactoryJustification", "");
 
   /* ================= ACTIONS ================= */
   const handleStartReview = async () => {
