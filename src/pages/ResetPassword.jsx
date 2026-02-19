@@ -1,52 +1,87 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import API from "../api";
 import "../styles/resetPassword.css";
+
+const normalizeDetail = (detail) => {
+  if (Array.isArray(detail)) {
+    return detail.join(" ");
+  }
+  return detail || "Unable to reset password.";
+};
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const uid = searchParams.get("uid") || "";
+  const token = searchParams.get("token") || "";
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const hasValidParams = Boolean(uid && token);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage("");
+    setError("");
 
-    if (!newPassword || !confirmPassword) {
-      setMessage("Please fill in all fields.");
+    if (!hasValidParams) {
+      setError("Reset link is invalid or incomplete.");
       return;
     }
 
-    if (newPassword.length < 6) {
-      setMessage("Password must be at least 6 characters long.");
+    if (!newPassword || !confirmPassword) {
+      setError("Please fill in all fields.");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setMessage("Passwords do not match.");
+      setError("Passwords do not match.");
       return;
     }
 
-    // Backend integration later (token + API call)
-    setMessage("Password reset successful. Redirecting to login...");
-    setTimeout(() => {
-      navigate("/login");
-    }, 2000);
+    setIsSubmitting(true);
+    try {
+      const response = await API.post("auth/reset-password/", {
+        uid,
+        token,
+        new_password: newPassword,
+      });
+
+      setMessage(response?.data?.detail || "Password reset successful.");
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setError(normalizeDetail(detail));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="rp-page">
       <div className="rp-header">
-        <div className="rp-icon">📘</div>
+        <div className="rp-icon">AC</div>
         <h1>Wadia College of Engineering</h1>
         <p>Faculty Appraisal System</p>
       </div>
 
       <div className="rp-card">
         <h2>Reset Password</h2>
-        <p className="rp-subtitle">
-          Enter your new password below
-        </p>
+        <p className="rp-subtitle">Enter your new password below.</p>
+
+        {!hasValidParams && (
+          <p className="rp-message" style={{ color: "#b91c1c" }}>
+            Invalid reset link. Request a new one.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           <label>New Password</label>
@@ -55,6 +90,7 @@ export default function ResetPassword() {
             placeholder="Enter new password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            disabled={!hasValidParams}
           />
 
           <label>Confirm Password</label>
@@ -63,19 +99,19 @@ export default function ResetPassword() {
             placeholder="Confirm new password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            disabled={!hasValidParams}
           />
 
+          {error && <p className="rp-message" style={{ color: "#b91c1c" }}>{error}</p>}
           {message && <p className="rp-message">{message}</p>}
 
-          <button type="submit" className="rp-btn">
-            Reset Password
+          <button type="submit" className="rp-btn" disabled={isSubmitting || !hasValidParams}>
+            {isSubmitting ? "Resetting..." : "Reset Password"}
           </button>
         </form>
 
         <div className="rp-back">
-          <span onClick={() => navigate("/login")}>
-            ← Back to Login
-          </span>
+          <span onClick={() => navigate("/login")}>Back to Login</span>
         </div>
       </div>
     </div>

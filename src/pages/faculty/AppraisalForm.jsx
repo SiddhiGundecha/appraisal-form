@@ -21,6 +21,99 @@ const buildAcademicYearOptions = (currentAcademicYear) => {
   ];
 };
 
+const DEFAULT_SPPU_ACTIVITY_SECTIONS = [
+  {
+    section_key: "a_administrative",
+    label: "Administrative responsibilities (HOD / Dean / Coordinator etc.)",
+    activities: [
+      "Departmental Library in charge",
+      "Cleanliness in charge",
+      "Departmental store/Purchase in-charge",
+      "Student Feedback in charge",
+      "In-charge/Member of AICTE/State Govt./University statutory committee",
+      "NBA/NACC coordinator",
+      "Rector/Warden/Canteen",
+      "Scholarship in-charge",
+      "Any other administrative activity",
+    ],
+  },
+  {
+    section_key: "b_exam_duties",
+    label: "Examination & evaluation duties",
+    activities: [
+      "Practical/Exam timetable in charge",
+      "Internal/External academic monitoring coordinator",
+      "Exam activities/duties",
+      "Any other examination/evaluation duty",
+    ],
+  },
+  {
+    section_key: "c_student_related",
+    label: "Student related co-curricular / extension activities",
+    activities: [
+      "Student Association (Chapter co-coordinator)",
+      "Project mentoring for project competition",
+      "Student counseling",
+      "Sports in charge and co-coordinator",
+      "PRO/Gymkhana/Gathering/Publicity/student club activity",
+      "Blood donation activity organization",
+      "Yoga classes",
+      "Medical camp/health camp organization",
+      "Literacy camp organization",
+      "Environmental awareness camp",
+      "Swachh Bharat mission / NCC / NSS activity",
+      "Any other student-related activity",
+    ],
+  },
+  {
+    section_key: "d_organizing_events",
+    label: "Organizing seminars / workshops / conferences",
+    activities: [
+      "Initiative for CEP/STTP/testing consultancy",
+      "Organization of MOOCS/NPTEL/spoken tutorials/webinars",
+      "Organization of FDP/Conference/Training/Workshop",
+      "Induction program in charge",
+      "Any other event organization activity",
+    ],
+  },
+  {
+    section_key: "e_phd_guidance",
+    label: "Guiding PhD students",
+    activities: [
+      "Evidence of activity involved in guiding PhD students",
+      "Any other PhD guidance activity",
+    ],
+  },
+  {
+    section_key: "f_research_project",
+    label: "Conducting minor / major research projects",
+    activities: [
+      "Conducting minor research project",
+      "Conducting major research project",
+      "Any other research project activity",
+    ],
+  },
+  {
+    section_key: "g_sponsored_project",
+    label: "Publication in UGC / Peer-reviewed journals",
+    activities: [
+      "Single or joint publication in peer-reviewed journal",
+      "Publication in UGC listed journal",
+      "Any other publication activity",
+    ],
+  },
+];
+
+const SECTION_TO_LEGACY = {
+  a_administrative: "administrative_responsibility",
+  b_exam_duties: "exam_duties",
+  c_student_related: "student_related",
+  d_organizing_events: "organizing_events",
+  e_phd_guidance: "phd_guidance",
+  f_research_project: "research_project",
+  g_sponsored_project: "sponsored_project",
+};
+
 
 export default function FacultyAppraisalForm() {
   const CURRENT_ACADEMIC_YEAR = getCurrentAcademicYear();
@@ -54,19 +147,12 @@ export default function FacultyAppraisalForm() {
 
 
 
-  const [sppuInvolvement, setSppuInvolvement] = useState({
-    administrative: "",
-    examDuty: "",
-    studentActivity: "",
-    seminarOrg: "",
-    phdGuidance: "",
-    researchProject: "",
-    publication: ""
-  });
+  const [activitySections, setActivitySections] = useState(DEFAULT_SPPU_ACTIVITY_SECTIONS);
   //new added
   const [departmentalActivities, setDepartmentalActivities] = useState([
     {
       semester: "",
+      section_key: "",
       activity: "",
       credit: "",
       criteria: "",
@@ -361,6 +447,9 @@ export default function FacultyAppraisalForm() {
     // 2️⃣ Fetch Existing Draft
     API.get(`appraisal/current/?is_hod=${isHOD}`)
       .then(res => {
+        if (Array.isArray(res.data?.activity_sections) && res.data.activity_sections.length > 0) {
+          setActivitySections(res.data.activity_sections);
+        }
         if (res.data && res.data.appraisal_data) {
           const aid = res.data.id || res.data.appraisal_id;
           setAppraisalId(aid);
@@ -379,7 +468,6 @@ export default function FacultyAppraisalForm() {
             }
             if (ui.teachingActivities) setTeachingActivities(ui.teachingActivities);
             if (ui.studentFeedback) setStudentFeedback(ui.studentFeedback);
-            if (ui.sppuInvolvement) setSppuInvolvement(ui.sppuInvolvement);
             if (ui.departmentalActivities) setDepartmentalActivities(ui.departmentalActivities);
             if (ui.instituteActivities) setInstituteActivities(ui.instituteActivities);
             if (ui.societyActivities) setSocietyActivities(ui.societyActivities);
@@ -454,6 +542,7 @@ export default function FacultyAppraisalForm() {
               setDepartmentalActivities(draft.pbas.departmental_activities.map(d => ({
                 activity: d.activity || "",
                 semester: d.semester || "",
+                section_key: d.section_key || d.section || "",
                 credit: d.credits_claimed || d.credit || "",
                 enclosureNo: d.enclosure_no || d.enclosure || ""
               })));
@@ -522,6 +611,41 @@ export default function FacultyAppraisalForm() {
   const TEACHING_TYPES = ["Lecture", "Tutorial", "Practical", "Lab"];
   const ACADEMIC_LEVELS = ["UG", "PG"];
   const ACADEMIC_YEARS = buildAcademicYearOptions(CURRENT_ACADEMIC_YEAR);
+
+
+  const deriveSppuFlagsFromSelections = (selections) => {
+    const flags = {
+      administrative_responsibility: false,
+      exam_duties: false,
+      student_related: false,
+      organizing_events: false,
+      phd_guidance: false,
+      research_project: false,
+      sponsored_project: false,
+      publication_in_ugc: false,
+    };
+
+    (selections || []).forEach((item) => {
+      const sectionKey = item?.section_key;
+      const legacyKey = SECTION_TO_LEGACY[sectionKey];
+      if (legacyKey) flags[legacyKey] = true;
+      if (sectionKey === "g_sponsored_project") flags.publication_in_ugc = true;
+    });
+
+    return flags;
+  };
+
+  const getSectionActivities = (sectionKey) => {
+    const section = activitySections.find((item) => item.section_key === sectionKey);
+    return Array.isArray(section?.activities) ? section.activities : [];
+  };
+
+  const selectedSppuActivities = departmentalActivities
+    .map((row) => ({
+      section_key: row.section_key,
+      activity_name: row.otherActivity?.trim() || row.activity,
+    }))
+    .filter((row) => row.section_key && row.activity_name);
 
   const [teachingActivities, setTeachingActivities] = useState([
     {
@@ -639,14 +763,11 @@ export default function FacultyAppraisalForm() {
         },
 
         activities: {
-          administrative_responsibility: sppuInvolvement.administrative === "Yes",
-          exam_duties: sppuInvolvement.examDuty === "Yes",
-          student_related: sppuInvolvement.studentActivity === "Yes",
-          organizing_events: sppuInvolvement.seminarOrg === "Yes",
-          phd_guidance: sppuInvolvement.phdGuidance === "Yes",
-          research_project: sppuInvolvement.researchProject === "Yes",
-          sponsored_project: sppuInvolvement.publication === "Yes",
-          publication_in_ugc: sppuInvolvement.publication === "Yes"
+          selected_activities: selectedSppuActivities.map((item) => ({
+            section_key: item.section_key,
+            activity_name: item.activity_name,
+          })),
+          ...deriveSppuFlagsFromSelections(selectedSppuActivities),
         },
 
         research: {
@@ -697,7 +818,8 @@ export default function FacultyAppraisalForm() {
 
           departmental_activities: departmentalActivities.map(a => ({
             semester: a.semester,
-            activity: a.activity,
+            section_key: a.section_key || "",
+            activity: a.otherActivity?.trim() || a.activity,
             criteria: a.criteria,
             credit: Number(a.credit),
             credits_claimed: Number(a.credit),
@@ -725,7 +847,6 @@ export default function FacultyAppraisalForm() {
           generalInfo,
           teachingActivities,
           studentFeedback,
-          sppuInvolvement,
           departmentalActivities,
           instituteActivities,
           societyActivities,
@@ -903,16 +1024,7 @@ export default function FacultyAppraisalForm() {
     setCurrentStep(2);
   };
   const validateSPPU = () => {
-    const newErrors = {};
-
-    Object.entries(sppuInvolvement).forEach(([key, value]) => {
-      if (!value) {
-        newErrors[key] = "This field is required";
-      }
-    });
-
-    setErrors(newErrors);
-    return newErrors;
+    return {};
   };
 
   const validateStep3Credits = () => {
@@ -1328,6 +1440,10 @@ export default function FacultyAppraisalForm() {
     setDepartmentalActivities(prev => {
       const copy = [...prev];
       copy[index][field] = value;
+      if (field === "section_key") {
+        copy[index].activity = "";
+        copy[index].otherActivity = "";
+      }
       return copy;
     });
     if (field === "credit") {
@@ -1377,6 +1493,7 @@ export default function FacultyAppraisalForm() {
       ...prev,
       {
         semester: "",
+        section_key: "",
         activity: "",
         credit: "",
         criteria: "",
@@ -1854,44 +1971,20 @@ export default function FacultyAppraisalForm() {
               <h3>Step 2B: Involvement in University / College Activities (SPPU)</h3>
 
               <p className="section-note">
-                Select <b>Yes</b> or <b>No</b> for each activity as per SPPU appraisal norms.
+                Yes/No is auto-derived from the section/activity selections entered in Departmental Activities (Step 3C).
               </p>
 
-              {[
-                ["administrative", "Administrative responsibilities (HOD / Dean / Coordinator etc.)"],
-                ["examDuty", "Examination & evaluation duties"],
-                ["studentActivity", "Student related co-curricular / extension activities"],
-                ["seminarOrg", "Organizing seminars / workshops / conferences"],
-                ["phdGuidance", "Guiding PhD students"],
-                ["researchProject", "Conducting minor / major research projects"],
-                ["publication", "Publication in UGC / Peer-reviewed journals"]
-              ].map(([key, label]) => (
-                <div className="sppu-row" key={key}>
-                  <label className="sppu-label">
-                    {label} <span className="required">*</span>
-                  </label>
-
-                  <div className="sppu-options">
-                    {["Yes", "No"].map((opt) => (
-                      <label key={opt}>
-                        <input
-                          type="radio"
-                          name={key}
-                          value={opt}
-                          checked={sppuInvolvement[key] === opt}
-                          onChange={(e) =>
-                            setSppuInvolvement({
-                              ...sppuInvolvement,
-                              [key]: e.target.value
-                            })
-                          }
-                        />
-                        {opt}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              <div className="sppu-summary">
+                {activitySections.map((section) => {
+                  const yes = selectedSppuActivities.some((item) => item.section_key === section.section_key);
+                  return (
+                    <div className="sppu-row" key={section.section_key}>
+                      <label className="sppu-label">{section.label}</label>
+                      <div className="sppu-options"><strong>{yes ? "Yes" : "No"}</strong></div>
+                    </div>
+                  );
+                })}
+              </div>
             </fieldset>
             {/* NAVIGATION */}
             <div className="form-actions">
@@ -2078,14 +2171,29 @@ export default function FacultyAppraisalForm() {
                     />
 
                     <select
+                      value={row.section_key || ""}
+                      onChange={(e) =>
+                        handleDeptChange(index, "section_key", e.target.value)
+                      }
+                    >
+                      <option value="">Select Section</option>
+                      {activitySections.map((section) => (
+                        <option key={section.section_key} value={section.section_key}>
+                          {section.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
                       value={row.activity}
                       onChange={(e) =>
                         handleDeptChange(index, "activity", e.target.value)
                       }
+                      disabled={!row.section_key}
                     >
                       <option value="">Select Activity</option>
-                      {DEPARTMENTAL_ACTIVITIES.map((act, i) => (
-                        <option key={i} value={act}>
+                      {getSectionActivities(row.section_key).map((act, i) => (
+                        <option key={`${row.section_key}_${i}`} value={act}>
                           {`${act} (Max ${getDepartmentPerActivityLimit()})`}
                         </option>
                       ))}
@@ -2133,7 +2241,7 @@ export default function FacultyAppraisalForm() {
                     <div className="field-error">{errors[`dept_${index}_credit`]}</div>
                   )}
 
-                  {row.activity === "Any other Activity" && (
+                  {String(row.activity || "").toLowerCase().includes("any other") && (
                     <div className="activity-row">
                       <input
                         placeholder="Specify other departmental activity"
@@ -2241,7 +2349,7 @@ export default function FacultyAppraisalForm() {
                     <div className="field-error">{errors[`inst_${index}_credit`]}</div>
                   )}
 
-                  {row.activity === "Any other Activity" && (
+                  {String(row.activity || "").toLowerCase().includes("any other") && (
                     <div className="activity-row">
                       <input
                         name="otherActivity"
@@ -2356,7 +2464,7 @@ export default function FacultyAppraisalForm() {
                     <div className="field-error">{errors[`soc_${index}_credit`]}</div>
                   )}
 
-                  {row.activity === "Any other Activity" && (
+                  {String(row.activity || "").toLowerCase().includes("any other") && (
                     <div className="activity-row">
                       <input
                         name="otherActivity"
@@ -3117,6 +3225,7 @@ export default function FacultyAppraisalForm() {
     </div >
   );
 }
+
 
 
 

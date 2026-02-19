@@ -4,6 +4,17 @@ const API = axios.create({
   baseURL: "http://127.0.0.1:8000/api/",
 });
 
+const PUBLIC_AUTH_PATHS = [
+  "/token/",
+  "/auth/login/",
+  "/login/",
+  "/auth/forgot-password/",
+  "/auth/reset-password/",
+];
+
+const isPublicAuthRequest = (url = "") =>
+  PUBLIC_AUTH_PATHS.some((path) => url.includes(path));
+
 const getAccessToken = () =>
   localStorage.getItem("access") ||
   sessionStorage.getItem("access") ||
@@ -43,6 +54,10 @@ const clearAuthAndRedirect = () => {
 };
 
 const attachAccessToken = (config) => {
+  if (isPublicAuthRequest(config?.url)) {
+    return config;
+  }
+
   const token = getAccessToken();
   if (token) {
     config.headers = config.headers || {};
@@ -66,8 +81,7 @@ const onRefreshed = (token) => {
   refreshSubscribers = [];
 };
 
-const shouldSkipAuthHandling = (url = "") =>
-  url.includes("/token/") || url.includes("/auth/login/") || url.includes("/login/");
+const shouldSkipAuthHandling = (url = "") => isPublicAuthRequest(url);
 
 const setupResponseInterceptor = (client) => {
   client.interceptors.response.use(

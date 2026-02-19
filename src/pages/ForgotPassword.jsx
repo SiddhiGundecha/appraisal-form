@@ -1,30 +1,61 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/login.css";
+import API from "../api";
+import "../styles/forgotPassword.css";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [debugLink, setDebugLink] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage("");
+    setError("");
+    setDebugLink("");
 
-    if (!email) {
-      setMessage("Please enter your registered email.");
+    if (!email.trim()) {
+      setError("Please enter your registered email.");
       return;
     }
 
-    // backend will send email later
-    setMessage(
-      "If this email is registered, a password reset link will be sent."
-    );
+    setIsSubmitting(true);
+    try {
+      const response = await API.post("auth/forgot-password/", {
+        email: email.trim(),
+      });
+
+      setMessage(
+        response?.data?.detail ||
+          "If an account exists, a reset link has been sent."
+      );
+      setDebugLink(response?.data?.debug?.reset_link || "");
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setError(
+        Array.isArray(detail)
+          ? detail.join(" ")
+          : detail || "Failed to process request."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <h2 className="login-title">Faculty Appraisal System</h2>
+    <div className="fp-page">
+      <div className="fp-header">
+        <div className="fp-icon">AC</div>
+        <h1>Wadia College of Engineering</h1>
+        <p>Faculty Appraisal System</p>
+      </div>
+
+      <div className="fp-card">
+        <h2>Forgot Password</h2>
+        <p className="fp-subtitle">Enter your registered email to receive a reset link.</p>
 
         <form onSubmit={handleSubmit}>
           <label>Email</label>
@@ -33,23 +64,25 @@ export default function ForgotPassword() {
             placeholder="your.email@college.edu"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
 
-          {message && (
-            <p className="info-text">{message}</p>
+          {error && <p className="fp-message" style={{ color: "#b91c1c" }}>{error}</p>}
+          {message && <p className="fp-message">{message}</p>}
+          {debugLink && (
+            <p className="fp-message">
+              Dev link: <a href={debugLink}>{debugLink}</a>
+            </p>
           )}
 
-          <button type="submit" className="login-btn">
-            Send Reset Link
+          <button type="submit" className="fp-btn" disabled={isSubmitting}>
+            {isSubmitting ? "Sending..." : "Send Reset Link"}
           </button>
         </form>
 
-        <p
-          className="forgot-link center-link"
-          onClick={() => navigate("/login")}
-        >
-          ← Back to Login
-        </p>
+        <div className="fp-back">
+          <span onClick={() => navigate("/login")}>Back to Login</span>
+        </div>
       </div>
     </div>
   );

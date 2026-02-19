@@ -963,3 +963,34 @@ button:hover::before {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;}}
+
+/* Step 2B dropdown flow */
+.sppu-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.sppu-chip-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sppu-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--surface);
+}
+
+.sppu-summary {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}

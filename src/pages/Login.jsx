@@ -16,38 +16,21 @@ export default function Login() {
     setError("");
 
     try {
-      /* =======================
-         1. LOGIN & GET JWT
-         ======================= */
       const response = await API.post("token/", {
         username: email.trim(),
-        password: password,
+        password,
       });
 
       const { access, refresh } = response.data;
 
-      /* =======================
-         2. CLEAR OLD DATA
-         ======================= */
       localStorage.clear();
       sessionStorage.clear();
 
-      /* =======================
-         3. STORE TOKENS (FIX)
-         ======================= */
       localStorage.setItem("access", access);
       localStorage.setItem("refresh", refresh);
 
-      /* =======================
-         4. ATTACH TOKEN TO AXIOS
-         ======================= */
-      API.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${access}`;
+      API.defaults.headers.common["Authorization"] = `Bearer ${access}`;
 
-      /* =======================
-         5. FETCH USER PROFILE
-         ======================= */
       const profileRes = await API.get("me/");
       const user = profileRes.data;
 
@@ -58,30 +41,22 @@ export default function Login() {
         return;
       }
 
-      /* =======================
-         6. ROLE-BASED ROUTING
-         ======================= */
       switch (user.role) {
         case "FACULTY":
           navigate("/faculty/dashboard");
           break;
-
         case "HOD":
           navigate("/hod/dashboard");
           break;
-
         case "PRINCIPAL":
           navigate("/principal/dashboard");
           break;
-
         case "ADMIN":
           navigate("/admin/dashboard");
           break;
-
         default:
           setError("Unauthorized role");
       }
-
     } catch (err) {
       console.error(err);
       setError("Invalid email or password");
@@ -99,7 +74,6 @@ export default function Login() {
         {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleLogin} className="login-form">
-
           <div className="form-group">
             <label htmlFor="email">Official Email</label>
             <input
@@ -136,7 +110,11 @@ export default function Login() {
               <span>Remember me</span>
             </label>
 
-            <button type="button" className="forgot-link">
+            <button
+              type="button"
+              className="forgot-link"
+              onClick={() => navigate("/forgot-password")}
+            >
               Forgot password?
             </button>
           </div>
@@ -145,7 +123,6 @@ export default function Login() {
             Sign In
           </button>
         </form>
-
       </div>
     </div>
   );
