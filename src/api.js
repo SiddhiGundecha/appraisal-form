@@ -78,6 +78,9 @@ const clearAuthAndRedirect = () => {
   sessionStorage.removeItem("refresh");
   sessionStorage.removeItem("access_token");
   sessionStorage.removeItem("refresh_token");
+  sessionStorage.removeItem("loggedInUser");
+  sessionStorage.removeItem("userProfile");
+  sessionStorage.removeItem("role");
 
   window.location.replace("/login");
 };
@@ -175,3 +178,5 @@ setupResponseInterceptor(API);
 setupResponseInterceptor(axios);
 
 export default API;
+
+

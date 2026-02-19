@@ -611,7 +611,8 @@ export default function PrincipalDashboard() {
             className="logout-btn"
             onClick={() => {
               localStorage.clear();
-              navigate("/login");
+            sessionStorage.clear();
+            navigate("/login");
             }}
           >
             Logout
@@ -708,6 +709,8 @@ export default function PrincipalDashboard() {
     </div>
   );
 }
+
+
 
 
 

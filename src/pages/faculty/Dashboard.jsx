@@ -92,6 +92,7 @@ export default function FacultyDashboard() {
           className="logout-btn"
           onClick={() => {
             localStorage.clear();
+            sessionStorage.clear();
             navigate("/login");
           }}
         >
@@ -201,6 +202,8 @@ export default function FacultyDashboard() {
     </div>
   );
 }
+
+
 
 
 
