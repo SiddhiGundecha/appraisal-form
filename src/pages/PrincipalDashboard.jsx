@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/HODDashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
 import useSessionState from "../hooks/useSessionState";
+import { downloadWithAuth, getAccessToken } from "../utils/downloadFile";
 import {
   DEFAULT_TABLE2_VERIFIED_KEYS,
   getTable2VerifiedLabel,
@@ -76,11 +77,11 @@ export default function PrincipalDashboard() {
   const [activeTab, setActiveTab] = useSessionState("principal.activeTab", "pending");
   const [selected, setSelected] = useSessionState("principal.selected", null);
   const [remarks, setRemarks] = useSessionState("principal.remarks", "");
-  const token = localStorage.getItem("access");
+  const token = getAccessToken();
 
   const handleStartReview = async () => {
     try {
-      const token = localStorage.getItem("access");
+      const token = getAccessToken();
 
       const res = await fetch(
         `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/start-review/`,
@@ -184,21 +185,7 @@ export default function PrincipalDashboard() {
 
   const downloadPdf = async (url, filename) => {
     try {
-      const authToken =
-        localStorage.getItem("access") || sessionStorage.getItem("access");
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      await downloadWithAuth(url, filename);
     } catch (err) {
       console.error(err);
       alert("Failed to download PDF.");
@@ -230,7 +217,7 @@ export default function PrincipalDashboard() {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem("access");
+        const token = getAccessToken();
 
         const res = await fetch(
           "http://127.0.0.1:8000/api/principal/appraisals/",
@@ -279,7 +266,7 @@ export default function PrincipalDashboard() {
 
     const fetchDetails = async () => {
       try {
-        const token = localStorage.getItem("access");
+        const token = getAccessToken();
         const res = await fetch(`http://127.0.0.1:8000/api/appraisal/${selected.id}/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -353,7 +340,7 @@ export default function PrincipalDashboard() {
     if (!selected) return;
 
     try {
-      const token = localStorage.getItem("access");
+      const token = getAccessToken();
 
       const res = await fetch(
         `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/finalize/`,
@@ -390,7 +377,7 @@ export default function PrincipalDashboard() {
     }
 
     try {
-      const token = localStorage.getItem("access");
+      const token = getAccessToken();
 
       const res = await fetch(
         `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/return/`,
@@ -721,6 +708,8 @@ export default function PrincipalDashboard() {
     </div>
   );
 }
+
+
 
 
 

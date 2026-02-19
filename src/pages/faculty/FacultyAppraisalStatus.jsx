@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/FacultyAppraisalStatus.css";
+import { downloadWithAuth, getAccessToken } from "../../utils/downloadFile";
 
 const USE_DUMMY_DATA = false;
 
@@ -42,7 +43,7 @@ export default function FacultyAppraisalStatus() {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem("access");
+        const token = getAccessToken();
         const response = await fetch("http://127.0.0.1:8000/api/faculty/appraisal/status/", {
           method: "GET",
           headers: {
@@ -72,20 +73,7 @@ export default function FacultyAppraisalStatus() {
 
   const downloadFile = async (url, filename) => {
     try {
-      const token = localStorage.getItem("access");
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(objectUrl);
+      await downloadWithAuth(url, filename);
     } catch (e) {
       alert("Failed to download PDF. It might not be generated yet.");
     }
@@ -189,7 +177,8 @@ export default function FacultyAppraisalStatus() {
     });
   };
 
-  const isHOD = localStorage.getItem("role") === "HOD";
+  const role = localStorage.getItem("role") || sessionStorage.getItem("role");
+  const isHOD = role === "HOD";
   const backPath = isHOD ? "/hod/dashboard" : "/faculty/dashboard";
   const editPath = isHOD ? "/hod/appraisal-form" : "/faculty/appraisal";
 
@@ -231,3 +220,6 @@ export default function FacultyAppraisalStatus() {
     </div>
   );
 }
+
+
+

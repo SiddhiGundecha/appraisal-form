@@ -4,6 +4,62 @@ import API from "../api";
 import "../styles/Login.css";
 import useSessionState from "../hooks/useSessionState";
 
+const AUTH_KEYS = [
+  "access",
+  "refresh",
+  "access_token",
+  "refresh_token",
+  "loggedInUser",
+  "userProfile",
+  "role",
+];
+
+const clearAuthStorage = () => {
+  AUTH_KEYS.forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+};
+
+const saveAuth = ({ access, refresh, user, remember }) => {
+  const target = remember ? localStorage : sessionStorage;
+  target.setItem("access", access);
+  target.setItem("refresh", refresh);
+  target.setItem("loggedInUser", JSON.stringify(user));
+  if (user?.role) {
+    target.setItem("role", user.role);
+  }
+};
+
+const getStoredUser = () => {
+  try {
+    const raw = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const routeByRole = (navigate, role, fallback = true) => {
+  switch (role) {
+    case "FACULTY":
+      navigate("/faculty/dashboard", { replace: true });
+      return true;
+    case "HOD":
+      navigate("/hod/dashboard", { replace: true });
+      return true;
+    case "PRINCIPAL":
+      navigate("/principal/dashboard", { replace: true });
+      return true;
+    case "ADMIN":
+      navigate("/admin/dashboard", { replace: true });
+      return true;
+    default:
+      if (fallback) navigate("/login", { replace: true });
+      return false;
+  }
+};
+
 export default function Login() {
   const navigate = useNavigate();
 
@@ -14,9 +70,17 @@ export default function Login() {
 
   useEffect(() => {
     const access = localStorage.getItem("access") || sessionStorage.getItem("access");
+    if (!access) return;
+
     const lastRoute = sessionStorage.getItem("lastRoute");
-    if (access && lastRoute && lastRoute !== "/login") {
+    if (lastRoute && !["/login", "/forgot-password", "/reset-password"].includes(lastRoute)) {
       navigate(lastRoute, { replace: true });
+      return;
+    }
+
+    const user = getStoredUser();
+    if (user?.role) {
+      routeByRole(navigate, user.role, false);
     }
   }, [navigate]);
 
@@ -31,46 +95,29 @@ export default function Login() {
       });
 
       const { access, refresh } = response.data;
+      const lastRoute = sessionStorage.getItem("lastRoute");
 
-      localStorage.clear();
-      sessionStorage.clear();
-
-      localStorage.setItem("access", access);
-      localStorage.setItem("refresh", refresh);
+      clearAuthStorage();
 
       API.defaults.headers.common["Authorization"] = `Bearer ${access}`;
 
       const profileRes = await API.get("me/");
       const user = profileRes.data;
 
-      localStorage.setItem("loggedInUser", JSON.stringify(user));
+      saveAuth({ access, refresh, user, remember });
 
       if (user.must_change_password) {
-        navigate("/faculty/profile?tab=password");
+        navigate("/faculty/profile?tab=password", { replace: true });
         return;
       }
 
-      const lastRoute = sessionStorage.getItem("lastRoute");
       if (lastRoute && !["/login", "/forgot-password", "/reset-password"].includes(lastRoute)) {
-        navigate(lastRoute);
+        navigate(lastRoute, { replace: true });
         return;
       }
 
-      switch (user.role) {
-        case "FACULTY":
-          navigate("/faculty/dashboard");
-          break;
-        case "HOD":
-          navigate("/hod/dashboard");
-          break;
-        case "PRINCIPAL":
-          navigate("/principal/dashboard");
-          break;
-        case "ADMIN":
-          navigate("/admin/dashboard");
-          break;
-        default:
-          setError("Unauthorized role");
+      if (!routeByRole(navigate, user.role, false)) {
+        setError("Unauthorized role");
       }
     } catch (err) {
       console.error(err);

@@ -5,6 +5,7 @@ import "../styles/HODDashboard.css";
 import "../styles/dashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
 import useSessionState from "../hooks/useSessionState";
+import { downloadWithAuth, getAccessToken } from "../utils/downloadFile";
 import {
   DEFAULT_TABLE2_VERIFIED_KEYS,
   getTable2VerifiedLabel,
@@ -74,7 +75,7 @@ const getTable2SelfValue = (reviewData, key) => {
 
 export default function HODDashboard() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("access");
+  const token = getAccessToken();
 
   const [activeTab, setActiveTab] = useSessionState("hod.activeTab", "pending");
   const [selectedSubmission, setSelectedSubmission] = useSessionState("hod.selectedSubmission", null);
@@ -373,21 +374,7 @@ export default function HODDashboard() {
 
   const downloadPdf = async (url, filename) => {
     try {
-      const authToken =
-        localStorage.getItem("access") || sessionStorage.getItem("access");
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      await downloadWithAuth(url, filename);
     } catch (err) {
       console.error(err);
       alert("Failed to download PDF.");
@@ -819,3 +806,5 @@ export default function HODDashboard() {
     </div>
   );
 }
+
+

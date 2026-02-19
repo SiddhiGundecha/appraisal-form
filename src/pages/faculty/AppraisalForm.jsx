@@ -122,7 +122,7 @@ export default function FacultyAppraisalForm() {
 
   const navigate = useNavigate();
 
-  const user = JSON.parse(localStorage.getItem("loggedInUser") || "{}");
+  const user = JSON.parse(localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser") || "{}");
   const isHOD = location.pathname.startsWith("/hod") || user.role === "HOD";
   const refreshStateKey = `appraisal-form-refresh-v1:${isHOD ? "hod" : "faculty"}:${user.id || user.username || "anon"}`;
 
@@ -3293,6 +3293,7 @@ export default function FacultyAppraisalForm() {
     </div >
   );
 }
+
 
 
 

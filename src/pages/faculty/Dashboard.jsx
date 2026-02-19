@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "../../styles/dashboard.css";
 import { formatStatus } from "../../utils/textFormatters";
+import { downloadWithAuth, getAccessToken } from "../../utils/downloadFile";
 
 export default function FacultyDashboard() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export default function FacultyDashboard() {
 
     const fetchCurrentAppraisal = async () => {
       try {
-        const token = localStorage.getItem("access");
+        const token = getAccessToken();
         const response = await fetch(
           "http://127.0.0.1:8000/api/faculty/appraisal/status/",
           {
@@ -69,20 +70,7 @@ export default function FacultyDashboard() {
 
   const downloadPdf = async (url, filename) => {
     try {
-      const token = localStorage.getItem("access");
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      await downloadWithAuth(url, filename);
     } catch (e) {
       alert("Failed to download PDF.");
     }
@@ -172,19 +160,7 @@ export default function FacultyDashboard() {
                       style={{ background: '#059669' }}
                       onClick={async () => {
                         try {
-                          const token = localStorage.getItem("access");
-                          const res = await fetch(`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/download/`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                          });
-                          if (!res.ok) throw new Error("Download failed");
-                          const blob = await res.blob();
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = `Appraisal_${appraisal.academic_year}.pdf`;
-                          document.body.appendChild(a);
-                          a.click();
-                          a.remove();
+                          await downloadWithAuth(`http://127.0.0.1:8000/api/appraisal/${appraisal.id}/pdf/sppu-enhanced/`, `SPPU_${appraisal.academic_year}.pdf`);
                         } catch (e) {
                           alert("Failed to download PDF. It might not be generated yet.");
                         }
@@ -225,5 +201,10 @@ export default function FacultyDashboard() {
     </div>
   );
 }
+
+
+
+
+
 
 
