@@ -1,7 +1,12 @@
 import axios from "axios";
 
+const normalizeBaseUrl = (url) => (url.endsWith("/") ? url : `${url}/`);
+const API_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/"
+);
+
 const API = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/",
+  baseURL: API_BASE_URL,
 });
 
 const PUBLIC_AUTH_PATHS = [
@@ -120,7 +125,7 @@ const setupResponseInterceptor = (client) => {
       isRefreshing = true;
 
       try {
-        const response = await axios.post("http://127.0.0.1:8000/api/token/refresh/", { refresh });
+        const response = await axios.post(`${API_BASE_URL}token/refresh/`, { refresh });
         const newAccess = response?.data?.access;
         if (!newAccess) {
           throw new Error("No access token returned on refresh");
