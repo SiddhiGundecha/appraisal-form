@@ -21,6 +21,8 @@ const clearAuthStorage = () => {
   });
 };
 
+const normalizeRole = (role) => String(role || "").trim().toUpperCase();
+
 const saveAuth = ({ access, refresh, user, remember }) => {
   const target = remember ? localStorage : sessionStorage;
   target.setItem("access", access);
@@ -41,7 +43,8 @@ const getStoredUser = () => {
 };
 
 const routeByRole = (navigate, role, fallback = true) => {
-  switch (role) {
+  const normalized = normalizeRole(role);
+  switch (normalized) {
     case "FACULTY":
       navigate("/faculty/dashboard", { replace: true });
       return true;
@@ -94,14 +97,29 @@ export default function Login() {
         password,
       });
 
-      const { access, refresh } = response.data;
-      const user = response.data?.user || (await API.get("me/")).data;
+      const payload = response?.data || {};
+      const access = payload?.access;
+      const refresh = payload?.refresh;
+      if (!access || !refresh) {
+        throw new Error("Login response missing access/refresh tokens");
+      }
+
       const lastRoute = sessionStorage.getItem("lastRoute");
 
       clearAuthStorage();
 
       API.defaults.headers.common.Authorization = `Bearer ${access}`;
+      // Temporary storage so interceptors/fallback API calls can authenticate immediately.
+      sessionStorage.setItem("access", access);
+      sessionStorage.setItem("refresh", refresh);
 
+      let user = payload?.user;
+      if (!user) {
+        const meRes = await API.get("me/");
+        user = meRes?.data || {};
+      }
+
+      user = { ...user, role: normalizeRole(user?.role) };
       saveAuth({ access, refresh, user, remember });
 
       if (user?.must_change_password) {
@@ -115,11 +133,13 @@ export default function Login() {
       }
 
       if (!routeByRole(navigate, user?.role, false)) {
-        setError("Unauthorized role");
+        setError(`Unauthorized role: ${user?.role || "missing"}`);
       }
     } catch (err) {
       console.error(err);
-      setError("Invalid email or password");
+      const detail = err?.response?.data?.detail;
+      const message = Array.isArray(detail) ? detail[0] : detail;
+      setError(message || "Login failed. Please check credentials and role mapping.");
     }
   };
 
@@ -187,5 +207,3 @@ export default function Login() {
     </div>
   );
 }
-
-
