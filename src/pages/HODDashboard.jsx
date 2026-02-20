@@ -6,6 +6,7 @@ import "../styles/dashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
 import useSessionState from "../hooks/useSessionState";
 import { downloadWithAuth, getAccessToken } from "../utils/downloadFile";
+import { buildApiUrl } from "../utils/apiUrl";
 import {
   DEFAULT_TABLE2_VERIFIED_KEYS,
   getTable2VerifiedLabel,
@@ -179,6 +180,7 @@ export default function HODDashboard() {
         setHodCommentsTable2(hodReview.comments_table2 || "");
         setHodRemarksSuggestions(hodReview.remarks_suggestions || "");
         setHodNotSatisfactoryJustification(hodReview.justification || "");
+        setVerificationSavedAt(res.data?.verification_saved_at || "");
       } catch (err) {
         console.error("Failed to fetch details", err);
       }
@@ -201,19 +203,15 @@ export default function HODDashboard() {
   const [hodCommentsTable2, setHodCommentsTable2] = useSessionState("hod.hodCommentsTable2", "");
   const [hodRemarksSuggestions, setHodRemarksSuggestions] = useSessionState("hod.hodRemarksSuggestions", "");
   const [hodNotSatisfactoryJustification, setHodNotSatisfactoryJustification] = useSessionState("hod.hodNotSatisfactoryJustification", "");
+  const [isSavingVerification, setIsSavingVerification] = useState(false);
+  const [verificationSavedAt, setVerificationSavedAt] = useState("");
+  const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
+  const [previewNotice, setPreviewNotice] = useState("");
 
   /* ================= ACTIONS ================= */
   const handleStartReview = async () => {
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/hod/appraisal/${selectedSubmission.appraisal_id}/start-review/`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!res.ok) throw new Error();
+      await API.post(`hod/appraisal/${selectedSubmission.appraisal_id}/start-review/`);
 
       alert("Moved to HOD Review");
 
@@ -226,34 +224,55 @@ export default function HODDashboard() {
     }
   };
 
-  const handleApprove = async () => {
+  const handleSaveVerifiedGrading = async () => {
     if (!table1VerifiedTeaching || !table1VerifiedActivities) {
-      alert("Please set both Table 1 verified gradings before approval.");
-      return;
+      alert("Please set both Table 1 verified gradings before saving.");
+      return false;
     }
 
+    setIsSavingVerification(true);
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/hod/appraisal/${selectedSubmission.appraisal_id}/approve/`,
+      const res = await API.post(
+        `hod/appraisal/${selectedSubmission.appraisal_id}/verify-grade/`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            table1_verified_teaching: table1VerifiedTeaching,
-            table1_verified_activities: table1VerifiedActivities,
-            table2_verified_scores: withAutoTable2Total(table2VerifiedScores, table2FieldKeys),
-            hod_comments_table1: hodCommentsTable1,
-            hod_comments_table2: hodCommentsTable2,
-            hod_remarks: hodRemarksSuggestions,
-            hod_justification_not_satisfactory: hodNotSatisfactoryJustification
-          })
+          table1_verified_teaching: table1VerifiedTeaching,
+          table1_verified_activities: table1VerifiedActivities,
+          table2_verified_scores: withAutoTable2Total(table2VerifiedScores, table2FieldKeys),
+          hod_comments_table1: hodCommentsTable1,
+          hod_comments_table2: hodCommentsTable2,
+          hod_remarks: hodRemarksSuggestions,
+          hod_justification_not_satisfactory: hodNotSatisfactoryJustification
         }
       );
+      setVerificationSavedAt(res?.data?.saved_at || new Date().toISOString());
+      alert("Verified grading saved.");
+      return true;
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.error || "Failed to save verified grading");
+      return false;
+    } finally {
+      setIsSavingVerification(false);
+    }
+  };
 
-      if (!res.ok) throw new Error();
+  const handleApprove = async () => {
+    const saved = await handleSaveVerifiedGrading();
+    if (!saved) return;
+
+    try {
+      await API.post(
+        `hod/appraisal/${selectedSubmission.appraisal_id}/approve/`,
+        {
+          table1_verified_teaching: table1VerifiedTeaching,
+          table1_verified_activities: table1VerifiedActivities,
+          table2_verified_scores: withAutoTable2Total(table2VerifiedScores, table2FieldKeys),
+          hod_comments_table1: hodCommentsTable1,
+          hod_comments_table2: hodCommentsTable2,
+          hod_remarks: hodRemarksSuggestions,
+          hod_justification_not_satisfactory: hodNotSatisfactoryJustification
+        }
+      );
 
       alert("Approved by HOD");
       setSelectedSubmission(null);
@@ -278,19 +297,7 @@ export default function HODDashboard() {
     }
 
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/hod/appraisal/${selectedSubmission.appraisal_id}/return/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ remarks }),
-        }
-      );
-
-      if (!res.ok) throw new Error();
+      await API.post(`hod/appraisal/${selectedSubmission.appraisal_id}/return/`, { remarks });
 
       alert("Returned to faculty");
       setSelectedSubmission(null);
@@ -335,23 +342,7 @@ export default function HODDashboard() {
         return;
       }
 
-      const res = await fetch(
-        "http://127.0.0.1:8000/api/hod/submit/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Submission failed");
-      }
+      await API.post("hod/submit/", payload);
 
       alert("HOD appraisal submitted successfully");
 
@@ -403,20 +394,35 @@ export default function HODDashboard() {
       : Number(selectedSubmission.calculated_total_score).toFixed(2);
 
   const previewPdf = async (url) => {
+    setIsPreviewProcessing(true);
+    setPreviewNotice("Do not refresh. Form is being processed.");
     try {
       const authToken =
         localStorage.getItem("access") || sessionStorage.getItem("access");
-      const res = await fetch(url, {
+      const requestUrl = buildApiUrl(url);
+      let res = await fetch(requestUrl, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
+      if (!res.ok) {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        res = await fetch(requestUrl, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+      }
       if (!res.ok) throw new Error("Preview failed");
+      const contentType = (res.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("application/pdf")) throw new Error("Invalid preview payload");
       const blob = await res.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       window.open(blobUrl, "_blank", "noopener,noreferrer");
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+      setPreviewNotice("Processing complete. You may continue.");
     } catch (err) {
       console.error(err);
       alert("Failed to preview PDF.");
+      setPreviewNotice("");
+    } finally {
+      setIsPreviewProcessing(false);
     }
   };
 
@@ -635,6 +641,12 @@ export default function HODDashboard() {
             )}
 
             {selectedSubmission.status === "REVIEWED_BY_HOD" && (
+              <button className="approve-btn" onClick={handleSaveVerifiedGrading} disabled={isSavingVerification}>
+                {isSavingVerification ? "Saving..." : "Save/Confirm Verified Grading"}
+              </button>
+            )}
+
+            {selectedSubmission.status === "REVIEWED_BY_HOD" && (
               <button className="approve-btn" onClick={handleApprove}>
                 Approve
               </button>
@@ -644,6 +656,16 @@ export default function HODDashboard() {
               Request Changes
             </button>
           </div>
+          {verificationSavedAt && (
+            <p style={{ fontSize: "0.85rem", color: "#4b5563", marginTop: "8px" }}>
+              Last saved verified grading: {new Date(verificationSavedAt).toLocaleString()}
+            </p>
+          )}
+          {previewNotice && (
+            <p style={{ fontSize: "0.85rem", color: "#92400e", marginTop: "4px" }}>
+              {previewNotice}
+            </p>
+          )}
         </div >
       </div >
     );

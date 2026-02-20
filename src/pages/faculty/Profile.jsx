@@ -5,6 +5,14 @@ import API from "../../api";
 import useSessionState from "../../hooks/useSessionState";
 
 const DEFAULT_AVATAR = "https://i.pravatar.cc/300?img=12";
+const withCacheBust = (url) => (url && url !== DEFAULT_AVATAR ? `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}` : (url || DEFAULT_AVATAR));
+const formatDateDisplay = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) return `${isoMatch[3]}-${isoMatch[2]}-${isoMatch[1]}`;
+  return text;
+};
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -64,8 +72,9 @@ export default function Profile() {
       const { profile_image, ...profileFields } = res.data || {};
       setProfileData(profileFields);
       setEditData(profileFields);
-      setProfileImage(profile_image || DEFAULT_AVATAR);
-      setSavedProfileImage(profile_image || DEFAULT_AVATAR);
+      const imageUrl = withCacheBust(profile_image || DEFAULT_AVATAR);
+      setProfileImage(imageUrl);
+      setSavedProfileImage(imageUrl);
       setProfileImageFile(null);
       setProfileImageRemoved(false);
     })
@@ -263,8 +272,9 @@ export default function Profile() {
       const { profile_image, ...profileFields } = res.data || {};
       setProfileData(profileFields);
       setEditData(profileFields);
-      setProfileImage(profile_image || DEFAULT_AVATAR);
-      setSavedProfileImage(profile_image || DEFAULT_AVATAR);
+      const imageUrl = withCacheBust(profile_image || DEFAULT_AVATAR);
+      setProfileImage(imageUrl);
+      setSavedProfileImage(imageUrl);
       setProfileImageFile(null);
       setProfileImageRemoved(false);
       setIsEditing(false);
@@ -317,8 +327,9 @@ export default function Profile() {
       setProfileData(profileFields);
       setEditData(profileFields);
       if (profile_image) {
-        setProfileImage(profile_image);
-        setSavedProfileImage(profile_image);
+        const imageUrl = withCacheBust(profile_image);
+        setProfileImage(imageUrl);
+        setSavedProfileImage(imageUrl);
       }
       setPasswordSuccess("Password updated successfully.");
     } catch (err) {
@@ -420,7 +431,11 @@ export default function Profile() {
 
                   <input
                     name={k}
-                    value={v}
+                    value={
+                      !isEditing && ["date_of_joining", "eligibility_date", "assessment_period"].includes(k)
+                        ? formatDateDisplay(v)
+                        : v
+                    }
                     onChange={handleProfileChange}
                     disabled={
                       !isEditing || readOnlyAccountFields.has(k)

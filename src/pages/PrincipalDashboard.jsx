@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../api";
 import "../styles/HODDashboard.css";
 import AppraisalSummary from "../components/AppraisalSummary";
 import useSessionState from "../hooks/useSessionState";
 import { downloadWithAuth, getAccessToken } from "../utils/downloadFile";
+import { buildApiUrl } from "../utils/apiUrl";
 import {
   DEFAULT_TABLE2_VERIFIED_KEYS,
   getTable2VerifiedLabel,
@@ -78,22 +80,14 @@ export default function PrincipalDashboard() {
   const [selected, setSelected] = useSessionState("principal.selected", null);
   const [remarks, setRemarks] = useSessionState("principal.remarks", "");
   const token = getAccessToken();
+  const [isSavingVerification, setIsSavingVerification] = useState(false);
+  const [verificationSavedAt, setVerificationSavedAt] = useState("");
+  const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
+  const [previewNotice, setPreviewNotice] = useState("");
 
   const handleStartReview = async () => {
     try {
-      const token = getAccessToken();
-
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/start-review/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) throw new Error("Start review failed");
+      await API.post(`principal/appraisal/${selected.id}/start-review/`);
 
       alert("Moved to Principal Review");
 
@@ -107,31 +101,49 @@ export default function PrincipalDashboard() {
     }
   };
 
-  const handleApprove = async () => {
+  const handleSaveVerifiedGrading = async () => {
     if (selected.is_hod_appraisal && (!table1VerifiedTeaching || !table1VerifiedActivities)) {
-      alert("Please set both Table 1 verified gradings for HOD submission.");
-      return;
+      alert("Please set both Table 1 verified gradings for HOD submission before saving.");
+      return false;
     }
 
+    setIsSavingVerification(true);
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/approve/`,
+      const res = await API.post(
+        `principal/appraisal/${selected.id}/verify-grade/`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            table1_verified_teaching: table1VerifiedTeaching,
-            table1_verified_activities: table1VerifiedActivities,
-            table2_verified_scores: withAutoTable2Total(table2VerifiedScores, table2FieldKeys),
-            principal_remarks: remarks
-          })
+          table1_verified_teaching: table1VerifiedTeaching,
+          table1_verified_activities: table1VerifiedActivities,
+          table2_verified_scores: withAutoTable2Total(table2VerifiedScores, table2FieldKeys),
+          principal_remarks: remarks,
         }
       );
+      setVerificationSavedAt(res?.data?.saved_at || new Date().toISOString());
+      alert("Verified grading saved.");
+      return true;
+    } catch (err) {
+      alert(err?.response?.data?.error || "Failed to save verified grading");
+      console.error(err);
+      return false;
+    } finally {
+      setIsSavingVerification(false);
+    }
+  };
 
-      if (!res.ok) throw new Error("Approve failed");
+  const handleApprove = async () => {
+    const saved = await handleSaveVerifiedGrading();
+    if (!saved) return;
+
+    try {
+      await API.post(
+        `principal/appraisal/${selected.id}/approve/`,
+        {
+          table1_verified_teaching: table1VerifiedTeaching,
+          table1_verified_activities: table1VerifiedActivities,
+          table2_verified_scores: withAutoTable2Total(table2VerifiedScores, table2FieldKeys),
+          principal_remarks: remarks
+        }
+      );
 
       alert("Approved by Principal. Now finalize.");
 
@@ -154,17 +166,7 @@ export default function PrincipalDashboard() {
 
   const handleFinalize = async () => {
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/finalize/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) throw new Error("Finalize failed");
+      await API.post(`principal/appraisal/${selected.id}/finalize/`);
 
       alert("Appraisal finalized & PDFs generated");
 
@@ -193,20 +195,35 @@ export default function PrincipalDashboard() {
   };
 
   const previewPdf = async (url) => {
+    setIsPreviewProcessing(true);
+    setPreviewNotice("Do not refresh. Form is being processed.");
     try {
       const authToken =
         localStorage.getItem("access") || sessionStorage.getItem("access");
-      const res = await fetch(url, {
+      const requestUrl = buildApiUrl(url);
+      let res = await fetch(requestUrl, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
+      if (!res.ok) {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        res = await fetch(requestUrl, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+      }
       if (!res.ok) throw new Error("Preview failed");
+      const contentType = (res.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("application/pdf")) throw new Error("Invalid preview payload");
       const blob = await res.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       window.open(blobUrl, "_blank", "noopener,noreferrer");
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+      setPreviewNotice("Processing complete. You may continue.");
     } catch (err) {
       console.error(err);
       alert("Failed to preview PDF.");
+      setPreviewNotice("");
+    } finally {
+      setIsPreviewProcessing(false);
     }
   };
 
@@ -217,20 +234,8 @@ export default function PrincipalDashboard() {
         setLoading(true);
         setError(null);
 
-        const token = getAccessToken();
-
-        const res = await fetch(
-          "http://127.0.0.1:8000/api/principal/appraisals/",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!res.ok) throw new Error("Failed to fetch");
-
-        const data = await res.json();
+        const res = await API.get("principal/appraisals/");
+        const data = res.data || [];
 
         // Split pending vs processed
         const pending = [];
@@ -266,12 +271,8 @@ export default function PrincipalDashboard() {
 
     const fetchDetails = async () => {
       try {
-        const token = getAccessToken();
-        const res = await fetch(`http://127.0.0.1:8000/api/appraisal/${selected.id}/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
+        const res = await API.get(`appraisal/${selected.id}/`);
+        const data = res.data;
         setSelected((prev) => ({
           ...prev,
           appraisal_data: data.appraisal_data,
@@ -294,6 +295,7 @@ export default function PrincipalDashboard() {
         );
         const principalReviewRemarks = data?.appraisal_data?.principal_review?.remarks || data?.remarks || "";
         setRemarks(principalReviewRemarks);
+        setVerificationSavedAt(data?.verification_saved_at || "");
       } catch (err) {
         console.error("Failed to fetch appraisal data", err);
       }
@@ -340,20 +342,7 @@ export default function PrincipalDashboard() {
     if (!selected) return;
 
     try {
-      const token = getAccessToken();
-
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/finalize/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) throw new Error("Approval failed");
+      await API.post(`principal/appraisal/${selected.id}/finalize/`);
 
       setSubmissions((prev) => ({
         pending: prev.pending.filter((a) => a.id !== selected.id),
@@ -377,21 +366,7 @@ export default function PrincipalDashboard() {
     }
 
     try {
-      const token = getAccessToken();
-
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/principal/appraisal/${selected.id}/return/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ remarks }),
-        }
-      );
-
-      if (!res.ok) throw new Error("Return failed");
+      await API.post(`principal/appraisal/${selected.id}/return/`, { remarks });
 
       setSubmissions((prev) => ({
         pending: prev.pending.filter((a) => a.id !== selected.id),
@@ -572,6 +547,12 @@ export default function PrincipalDashboard() {
 
 
             {selected.status === "REVIEWED_BY_PRINCIPAL" && (
+              <button className="approve-btn" onClick={handleSaveVerifiedGrading} disabled={isSavingVerification}>
+                {isSavingVerification ? "Saving..." : "Save/Confirm Verified Grading"}
+              </button>
+            )}
+
+            {selected.status === "REVIEWED_BY_PRINCIPAL" && (
               <button className="approve-btn" onClick={handleApprove}>
                 Approve
               </button>
@@ -587,6 +568,21 @@ export default function PrincipalDashboard() {
               Request Changes
             </button>
           </div>
+          {verificationSavedAt && (
+            <p style={{ fontSize: "0.85rem", color: "#4b5563", marginTop: "8px" }}>
+              Last saved verified grading: {new Date(verificationSavedAt).toLocaleString()}
+            </p>
+          )}
+          {previewNotice && (
+            <p style={{ fontSize: "0.85rem", color: "#92400e", marginTop: "4px" }}>
+              {previewNotice}
+            </p>
+          )}
+          {isPreviewProcessing && (
+            <p style={{ fontSize: "0.85rem", color: "#92400e", marginTop: "4px" }}>
+              Generating preview...
+            </p>
+          )}
         </div>
       </div>
     );

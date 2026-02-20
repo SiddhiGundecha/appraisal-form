@@ -1,10 +1,5 @@
 import axios from "axios";
-
-const normalizeBaseUrl = (url) => (url.endsWith("/") ? url : `${url}/`);
-const API_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/"
-);
-const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+import { API_BASE_URL, BACKEND_ORIGIN, buildApiUrl } from "./utils/apiUrl";
 
 const API = axios.create({
   baseURL: API_BASE_URL,
@@ -178,5 +173,6 @@ setupResponseInterceptor(API);
 setupResponseInterceptor(axios);
 
 export default API;
+export { API_BASE_URL, BACKEND_ORIGIN, buildApiUrl };
 
 

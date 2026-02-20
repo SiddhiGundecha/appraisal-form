@@ -24,9 +24,11 @@ export default function ForgotPassword() {
 
     setIsSubmitting(true);
     try {
-      const response = await API.post("auth/forgot-password/", {
-        email: email.trim(),
-      });
+      const response = await API.post(
+        "auth/forgot-password/",
+        { email: email.trim() },
+        { timeout: 15000 }
+      );
 
       setMessage(
         response?.data?.detail ||
@@ -35,10 +37,13 @@ export default function ForgotPassword() {
       setDebugLink(response?.data?.debug?.reset_link || "");
     } catch (err) {
       const detail = err?.response?.data?.detail;
+      const timeoutHit = err?.code === "ECONNABORTED";
       setError(
-        Array.isArray(detail)
-          ? detail.join(" ")
-          : detail || "Failed to process request."
+        timeoutHit
+          ? "Request timed out. Please try again."
+          : Array.isArray(detail)
+            ? detail.join(" ")
+            : detail || "Failed to process request."
       );
     } finally {
       setIsSubmitting(false);

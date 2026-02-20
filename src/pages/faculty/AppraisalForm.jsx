@@ -115,6 +115,12 @@ const SECTION_TO_LEGACY = {
 };
 
 
+const STEP2_ACTIVITY_TYPE_OPTIONS = [
+  { value: "departmental", label: "Departmental" },
+  { value: "institutional", label: "Institutional" },
+  { value: "society", label: "Society" },
+];
+
 export default function FacultyAppraisalForm() {
   const CURRENT_ACADEMIC_YEAR = getCurrentAcademicYear();
 
@@ -201,6 +207,21 @@ export default function FacultyAppraisalForm() {
   ]);
 
 
+
+  const [step2bActivities, setStep2bActivities] = useState([
+    {
+      id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      activityType: "",
+      section_key: "",
+      activity: "",
+      isInvolved: "Yes",
+      semester: "",
+      credit: "",
+      enclosureNo: "",
+      criteria: "",
+      otherActivity: ""
+    }
+  ]);
 
   /*LAST BLOCK OF <PAYLOAD></PAYLOAD>*/
   const [pbasScores, setPbasScores] = useState({
@@ -308,6 +329,129 @@ export default function FacultyAppraisalForm() {
   const getSocietyPerActivityLimit = () => 5;
 
 
+
+  const createStep2BRow = () => ({
+    id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    activityType: "",
+    section_key: "",
+    activity: "",
+    isInvolved: "Yes",
+    semester: "",
+    credit: "",
+    enclosureNo: "",
+    criteria: "",
+    otherActivity: ""
+  });
+
+  const getTypeActivities = (activityType) => {
+    if (activityType === "departmental") return DEPARTMENTAL_ACTIVITIES;
+    if (activityType === "institutional") return INSTITUTE_ACTIVITIES;
+    if (activityType === "society") return SOCIETY_ACTIVITIES;
+    return [];
+  };
+
+  const getActivityTypeLabel = (activityType) => {
+    if (activityType === "departmental") return "Departmental";
+    if (activityType === "institutional") return "Institutional";
+    if (activityType === "society") return "Society";
+    return "";
+  };
+
+  const inferSectionKeyFromSelection = (activityType, activityName) => {
+    const text = String(activityName || "").toLowerCase();
+    if (activityType === "society") return "c_student_related";
+    if (text.includes("phd")) return "e_phd_guidance";
+    if (text.includes("research") || text.includes("consultancy") || text.includes("project")) return "f_research_project";
+    if (text.includes("publication") || text.includes("journal")) return "g_sponsored_project";
+    if (text.includes("exam") || text.includes("evaluation") || text.includes("timetable")) return "b_exam_duties";
+    if (text.includes("conference") || text.includes("workshop") || text.includes("fdp") || text.includes("webinar") || text.includes("mooc") || text.includes("induction")) return "d_organizing_events";
+    if (text.includes("student") || text.includes("sports") || text.includes("counsel") || text.includes("ncc") || text.includes("nss") || text.includes("blood") || text.includes("yoga")) return "c_student_related";
+    return "a_administrative";
+  };
+
+  const getMaxCreditForSelection = (activityType, activityName) => {
+    if (activityType === "departmental") return getDepartmentPerActivityLimit();
+    if (activityType === "institutional") return getInstitutePerActivityLimit(activityName);
+    if (activityType === "society") return getSocietyPerActivityLimit();
+    return 0;
+  };
+
+  const mergeMappedRows = (existingRows, mappedRows) => {
+    const manualRows = (existingRows || []).filter((row) => !row.mapping_id);
+    const existingById = new Map((existingRows || []).filter((row) => row.mapping_id).map((row) => [row.mapping_id, row]));
+
+    const mergedMapped = mappedRows.map((mapped) => {
+      const existing = existingById.get(mapped.mapping_id);
+      if (!existing) return mapped;
+      return {
+        ...mapped,
+        credit: existing.credit !== undefined && existing.credit !== "" ? existing.credit : mapped.credit,
+        criteria: existing.criteria !== undefined && existing.criteria !== "" ? existing.criteria : mapped.criteria,
+        enclosureNo: existing.enclosureNo !== undefined && existing.enclosureNo !== "" ? existing.enclosureNo : mapped.enclosureNo,
+        semester: existing.semester !== undefined && existing.semester !== "" ? existing.semester : mapped.semester,
+        otherActivity: existing.otherActivity !== undefined && existing.otherActivity !== "" ? existing.otherActivity : mapped.otherActivity,
+      };
+    });
+
+    return [...mergedMapped, ...manualRows];
+  };
+
+  const deriveStep2BFromLegacyRows = (deptRows, instRows, socRows) => {
+    const rows = [];
+
+    (deptRows || []).forEach((row, index) => {
+      const activity = row.otherActivity?.trim() || row.activity || "";
+      if (!activity) return;
+      rows.push({
+        id: `legacy_dept_${index}_${Date.now()}`,
+        activityType: "departmental",
+        section_key: row.section_key || inferSectionKeyFromSelection("departmental", activity),
+        activity,
+        isInvolved: "Yes",
+        semester: row.semester || "",
+        credit: row.credit || "",
+        enclosureNo: row.enclosureNo || "",
+        criteria: row.criteria || "",
+        otherActivity: row.otherActivity || ""
+      });
+    });
+
+    (instRows || []).forEach((row, index) => {
+      const activity = row.otherActivity?.trim() || row.activity || "";
+      if (!activity) return;
+      rows.push({
+        id: `legacy_inst_${index}_${Date.now()}`,
+        activityType: "institutional",
+        section_key: inferSectionKeyFromSelection("institutional", activity),
+        activity,
+        isInvolved: "Yes",
+        semester: row.semester || "",
+        credit: row.credit || "",
+        enclosureNo: row.enclosureNo || "",
+        criteria: row.criteria || "",
+        otherActivity: row.otherActivity || ""
+      });
+    });
+
+    (socRows || []).forEach((row, index) => {
+      const activity = row.otherActivity?.trim() || row.activity || "";
+      if (!activity) return;
+      rows.push({
+        id: `legacy_soc_${index}_${Date.now()}`,
+        activityType: "society",
+        section_key: inferSectionKeyFromSelection("society", activity),
+        activity,
+        isInvolved: "Yes",
+        semester: row.semester || "",
+        credit: row.credit || "",
+        enclosureNo: row.enclosureNo || "",
+        criteria: row.criteria || "",
+        otherActivity: row.otherActivity || ""
+      });
+    });
+
+    return rows;
+  };
 
   const [research, setResearch] = useState({
     papers: [
@@ -469,6 +613,7 @@ export default function FacultyAppraisalForm() {
             }
             if (ui.teachingActivities) setTeachingActivities(ui.teachingActivities);
             if (ui.studentFeedback) setStudentFeedback(ui.studentFeedback);
+            if (ui.step2bActivities) setStep2bActivities(ui.step2bActivities);
             if (ui.departmentalActivities) setDepartmentalActivities(ui.departmentalActivities);
             if (ui.instituteActivities) setInstituteActivities(ui.instituteActivities);
             if (ui.societyActivities) setSocietyActivities(ui.societyActivities);
@@ -588,6 +733,70 @@ export default function FacultyAppraisalForm() {
       .catch(err => console.error("Failed to load draft", err));
   }, []);
 
+  useEffect(() => {
+    const hasMeaningfulStep2B = step2bActivities.some((row) => row.activityType || row.activity || row.credit || row.semester || row.enclosureNo);
+    if (hasMeaningfulStep2B) return;
+
+    const derived = deriveStep2BFromLegacyRows(departmentalActivities, instituteActivities, societyActivities);
+    if (derived.length > 0) {
+      setStep2bActivities(derived);
+    }
+  }, [departmentalActivities, instituteActivities, societyActivities]);
+
+  useEffect(() => {
+    const activeRows = step2bActivities.filter((row) => row.isInvolved === "Yes" && (row.activity || row.otherActivity));
+
+    const mappedDepartmental = activeRows
+      .filter((row) => row.activityType === "departmental")
+      .map((row) => {
+        const activityName = row.otherActivity?.trim() || row.activity;
+        return {
+          mapping_id: row.id,
+          semester: row.semester || "",
+          section_key: row.section_key || inferSectionKeyFromSelection("departmental", activityName),
+          activity: activityName,
+          credit: row.credit || "",
+          criteria: row.criteria || "",
+          enclosureNo: row.enclosureNo || "",
+          otherActivity: row.otherActivity || "",
+        };
+      });
+
+    const mappedInstitutional = activeRows
+      .filter((row) => row.activityType === "institutional")
+      .map((row) => {
+        const activityName = row.otherActivity?.trim() || row.activity;
+        return {
+          mapping_id: row.id,
+          semester: row.semester || "",
+          activity: activityName,
+          credit: row.credit || "",
+          criteria: row.criteria || "",
+          enclosureNo: row.enclosureNo || "",
+          otherActivity: row.otherActivity || "",
+        };
+      });
+
+    const mappedSociety = activeRows
+      .filter((row) => row.activityType === "society")
+      .map((row) => {
+        const activityName = row.otherActivity?.trim() || row.activity;
+        return {
+          mapping_id: row.id,
+          semester: row.semester || "",
+          activity: activityName,
+          credit: row.credit || "",
+          criteria: row.criteria || "",
+          enclosureNo: row.enclosureNo || "",
+          otherActivity: row.otherActivity || "",
+        };
+      });
+
+    setDepartmentalActivities((prev) => mergeMappedRows(prev, mappedDepartmental));
+    setInstituteActivities((prev) => mergeMappedRows(prev, mappedInstitutional));
+    setSocietyActivities((prev) => mergeMappedRows(prev, mappedSociety));
+  }, [step2bActivities]);
+
   const handleGeneralChange = (e) => {
     const { name, value } = e.target;
 
@@ -641,11 +850,16 @@ export default function FacultyAppraisalForm() {
     return Array.isArray(section?.activities) ? section.activities : [];
   };
 
-  const selectedSppuActivities = departmentalActivities
-    .map((row) => ({
-      section_key: row.section_key,
-      activity_name: row.otherActivity?.trim() || row.activity,
-    }))
+  const selectedSppuActivities = step2bActivities
+    .filter((row) => row.isInvolved === "Yes")
+    .map((row) => {
+      const activityName = row.otherActivity?.trim() || row.activity;
+      const sectionKey = row.section_key || inferSectionKeyFromSelection(row.activityType, activityName);
+      return {
+        section_key: sectionKey,
+        activity_name: activityName,
+      };
+    })
     .filter((row) => row.section_key && row.activity_name);
 
   const [teachingActivities, setTeachingActivities] = useState([
@@ -708,6 +922,8 @@ export default function FacultyAppraisalForm() {
   /* ================= SUBMISSION ================= */
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [formStatus, setFormStatus] = useState("draft");
+  const [processingNotice, setProcessingNotice] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     try {
@@ -720,6 +936,7 @@ export default function FacultyAppraisalForm() {
       if (cached.generalInfo) setGeneralInfo((prev) => ({ ...prev, ...cached.generalInfo }));
       if (Array.isArray(cached.teachingActivities) && cached.teachingActivities.length) setTeachingActivities(cached.teachingActivities);
       if (Array.isArray(cached.studentFeedback) && cached.studentFeedback.length) setStudentFeedback(cached.studentFeedback);
+      if (Array.isArray(cached.step2bActivities) && cached.step2bActivities.length) setStep2bActivities(cached.step2bActivities);
       if (Array.isArray(cached.departmentalActivities) && cached.departmentalActivities.length) setDepartmentalActivities(cached.departmentalActivities);
       if (Array.isArray(cached.instituteActivities) && cached.instituteActivities.length) setInstituteActivities(cached.instituteActivities);
       if (Array.isArray(cached.societyActivities) && cached.societyActivities.length) setSocietyActivities(cached.societyActivities);
@@ -741,6 +958,7 @@ export default function FacultyAppraisalForm() {
       generalInfo,
       teachingActivities,
       studentFeedback,
+      step2bActivities,
       departmentalActivities,
       instituteActivities,
       societyActivities,
@@ -764,10 +982,11 @@ export default function FacultyAppraisalForm() {
     generalInfo,
     teachingActivities,
     studentFeedback,
-    departmentalActivities,
-    instituteActivities,
-    societyActivities,
-    acrDetails,
+          step2bActivities,
+          departmentalActivities,
+          instituteActivities,
+          societyActivities,
+          acrDetails,
     research,
     pbasScores,
     justification,
@@ -915,6 +1134,7 @@ export default function FacultyAppraisalForm() {
           generalInfo,
           teachingActivities,
           studentFeedback,
+          step2bActivities,
           departmentalActivities,
           instituteActivities,
           societyActivities,
@@ -964,6 +1184,8 @@ export default function FacultyAppraisalForm() {
   };
 
   const previewGeneratedPdf = async (formType) => {
+    setIsProcessing(true);
+    setProcessingNotice("Do not refresh. Form is being processed.");
     try {
       let id = appraisalId;
       if (!id) {
@@ -982,9 +1204,13 @@ export default function FacultyAppraisalForm() {
       const pdfBlobUrl = window.URL.createObjectURL(response.data);
       window.open(pdfBlobUrl, "_blank", "noopener,noreferrer");
       setTimeout(() => window.URL.revokeObjectURL(pdfBlobUrl), 60000);
+      setProcessingNotice("Processing complete. You may continue.");
     } catch (error) {
       console.error("Preview failed", error);
       alert("Failed to load preview PDF.");
+      setProcessingNotice("");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -1087,8 +1313,13 @@ export default function FacultyAppraisalForm() {
     setErrors(newErrors);
     return newErrors;
   };
-  const handleSaveAndNext = () => {
+  const handleSaveAndNext = async () => {
     setErrors({});
+    const saved = await handleSaveDraft(true);
+    if (!saved) {
+      alert("Please save before moving to the next step.");
+      return;
+    }
     setCurrentStep(2);
   };
   const validateSPPU = () => {
@@ -1230,15 +1461,24 @@ export default function FacultyAppraisalForm() {
       const label = `${m.category || ""} ${m.role || ""}`.trim();
       if (m.category === "MOOC") {
         if (m.role === "Course Coordinator") upsert("mooc_course_coordinator", label, m.year, m.enclosureNo, 1);
-        else upsert("mooc_complete_4_quadrant", label, m.year, m.enclosureNo, 1);
+        else if (m.role === "Per Module") upsert("mooc_per_module", label, m.year, m.enclosureNo, 1);
+        else if (m.role === "4 Quadrant Course") upsert("mooc_complete_4_quadrant", label, m.year, m.enclosureNo, 1);
+        else upsert("mooc_content_writer", label, m.year, m.enclosureNo, 1);
       }
       if (m.category === "E-Content") {
-        if (m.role === "Per Module") upsert("econtent_4quadrant_per_module", label, m.year, m.enclosureNo, 1);
+        if (m.role === "Complete Course") upsert("econtent_complete_course", label, m.year, m.enclosureNo, 1);
+        else if (m.role === "Per Module") upsert("econtent_4quadrant_per_module", label, m.year, m.enclosureNo, 1);
         else if (m.role === "Contribution") upsert("econtent_module_contribution", label, m.year, m.enclosureNo, 1);
         else if (m.role === "Editor") upsert("econtent_editor", label, m.year, m.enclosureNo, 1);
-        else upsert("econtent_complete_course", label, m.year, m.enclosureNo, 1);
+        else upsert("econtent_module_contribution", label, m.year, m.enclosureNo, 1);
       }
-      if (m.category === "Curriculum Design") upsert("new_curriculum", label, m.year, m.enclosureNo, 1);
+      if (m.category === "Curriculum Design") {
+        if (m.role === "Development of Innovative Pedagogy") {
+          upsert("innovative_pedagogy_development", label, m.year, m.enclosureNo, 1);
+        } else {
+          upsert("new_curriculum", label, m.year, m.enclosureNo, 1);
+        }
+      }
     });
 
     research.consultancyPolicy.forEach((c) => {
@@ -1449,6 +1689,8 @@ export default function FacultyAppraisalForm() {
     if (!confirmed) return;
 
     try {
+      setIsProcessing(true);
+      setProcessingNotice("Do not refresh. Form is being processed.");
       // 3️⃣ Build payload (ONLY ONCE)
       const payload = buildBackendPayload("submit");
 
@@ -1478,6 +1720,7 @@ export default function FacultyAppraisalForm() {
           ? "Appraisal submitted and sent to Principal for review."
           : "Appraisal submitted and sent to HOD for review."
       );
+      setProcessingNotice("Processing complete. You may continue.");
       navigate(isHOD ? "/HOD/dashboard" : "/faculty/dashboard");
 
 
@@ -1490,14 +1733,22 @@ export default function FacultyAppraisalForm() {
 
       const message = error?.response?.data?.error || "Submission failed. Please try again.";
       alert(message);
+      setProcessingNotice("");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handleStep3Next = () => {
+  const handleStep3Next = async () => {
     const step3CreditErrors = validateStep3Credits();
     if (Object.keys(step3CreditErrors).length > 0) {
       setErrors((prev) => ({ ...prev, ...step3CreditErrors }));
       showValidationSummary(step3CreditErrors);
+      return;
+    }
+    const saved = await handleSaveDraft(true);
+    if (!saved) {
+      alert("Please save before moving to the next step.");
       return;
     }
     setCurrentStep(4);
@@ -1643,6 +1894,21 @@ export default function FacultyAppraisalForm() {
           </button>
         </div>
       </div>
+
+      {processingNotice && (
+        <div style={{
+          background: "#fffbeb",
+          border: "1px solid #fde68a",
+          color: "#92400e",
+          padding: "12px",
+          borderRadius: "8px",
+          marginBottom: "12px",
+          marginTop: "12px"
+        }}>
+          {processingNotice}
+          {isProcessing ? " Please wait..." : ""}
+        </div>
+      )}
 
       {remarks && (
         <div style={{
@@ -2039,8 +2305,173 @@ export default function FacultyAppraisalForm() {
               <h3>Step 2B: Involvement in University / College Activities (SPPU)</h3>
 
               <p className="section-note">
-                Yes/No is auto-derived from the section/activity selections entered in Departmental Activities (Step 3C).
+                Add activities here first. They are auto-mapped to Departmental / Institutional / Society tables in the next step.
               </p>
+
+              {step2bActivities.map((row, index) => {
+                const activityOptions = getTypeActivities(row.activityType);
+                const maxCredit = getMaxCreditForSelection(row.activityType, row.activity);
+                const inferredSection = row.section_key || inferSectionKeyFromSelection(row.activityType, row.activity);
+                const sectionLabel = activitySections.find((s) => s.section_key === inferredSection)?.label || "-";
+
+                return (
+                  <div className="activity-card" key={row.id || index}>
+                    <div className="activity-row">
+                      <select
+                        value={row.activityType}
+                        onChange={(e) => {
+                          const activityType = e.target.value;
+                          setStep2bActivities((prev) => {
+                            const copy = [...prev];
+                            const next = { ...copy[index] };
+                            next.activityType = activityType;
+                            next.activity = "";
+                            next.section_key = "";
+                            copy[index] = next;
+                            return copy;
+                          });
+                        }}
+                      >
+                        <option value="">Select Activity Type</option>
+                        {STEP2_ACTIVITY_TYPE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={row.activity}
+                        disabled={!row.activityType}
+                        onChange={(e) => {
+                          const activity = e.target.value;
+                          setStep2bActivities((prev) => {
+                            const copy = [...prev];
+                            const next = { ...copy[index] };
+                            next.activity = activity;
+                            next.section_key = inferSectionKeyFromSelection(next.activityType, activity);
+                            copy[index] = next;
+                            return copy;
+                          });
+                        }}
+                      >
+                        <option value="">Select Activity</option>
+                        {activityOptions.map((act, i) => (
+                          <option key={row.activityType + "_" + i} value={act}>{act}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={row.isInvolved}
+                        onChange={(e) => {
+                          const isInvolved = e.target.value;
+                          setStep2bActivities((prev) => {
+                            const copy = [...prev];
+                            copy[index] = { ...copy[index], isInvolved };
+                            return copy;
+                          });
+                        }}
+                      >
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Credit"
+                        value={row.credit}
+                        onChange={(e) => {
+                          const credit = e.target.value;
+                          setStep2bActivities((prev) => {
+                            const copy = [...prev];
+                            copy[index] = { ...copy[index], credit };
+                            return copy;
+                          });
+                        }}
+                      />
+                    </div>
+
+                    <div className="activity-row">
+                      <input
+                        placeholder="Semester / Year"
+                        value={row.semester}
+                        onChange={(e) => {
+                          const semester = e.target.value;
+                          setStep2bActivities((prev) => {
+                            const copy = [...prev];
+                            copy[index] = { ...copy[index], semester };
+                            return copy;
+                          });
+                        }}
+                      />
+
+                      <input
+                        placeholder="Criteria (optional)"
+                        value={row.criteria}
+                        onChange={(e) => {
+                          const criteria = e.target.value;
+                          setStep2bActivities((prev) => {
+                            const copy = [...prev];
+                            copy[index] = { ...copy[index], criteria };
+                            return copy;
+                          });
+                        }}
+                      />
+
+                      <input
+                        placeholder="Enclosure No."
+                        value={row.enclosureNo}
+                        onChange={(e) => {
+                          const enclosureNo = e.target.value;
+                          setStep2bActivities((prev) => {
+                            const copy = [...prev];
+                            copy[index] = { ...copy[index], enclosureNo };
+                            return copy;
+                          });
+                        }}
+                      />
+
+                      <div className="section-note" style={{ marginTop: "4px" }}>
+                        Max credit: {maxCredit || "-"} | 7-section map: {sectionLabel}
+                      </div>
+
+                      {step2bActivities.length > 1 && (
+                        <button
+                          type="button"
+                          className="btn-remove"
+                          onClick={() => setStep2bActivities((prev) => prev.filter((_, i) => i !== index))}
+                        >
+                          ?
+                        </button>
+                      )}
+                    </div>
+
+                    {String(row.activity || "").toLowerCase().includes("any other") && (
+                      <div className="activity-row">
+                        <input
+                          placeholder={"Specify other " + getActivityTypeLabel(row.activityType).toLowerCase() + " activity"}
+                          value={row.otherActivity}
+                          onChange={(e) => {
+                            const otherActivity = e.target.value;
+                            setStep2bActivities((prev) => {
+                              const copy = [...prev];
+                              copy[index] = { ...copy[index], otherActivity };
+                              return copy;
+                            });
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => setStep2bActivities((prev) => [...prev, createStep2BRow()])}
+              >
+                + Add Activity Row
+              </button>
 
               <div className="sppu-summary">
                 {activitySections.map((section) => {
@@ -2067,7 +2498,7 @@ export default function FacultyAppraisalForm() {
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => {
+                onClick={async () => {
                   const teachingErrors = validateStep2();
                   if (Object.keys(teachingErrors).length > 0) {
                     showValidationSummary(teachingErrors);
@@ -2076,6 +2507,11 @@ export default function FacultyAppraisalForm() {
                   const sppuErrors = validateSPPU();
                   if (Object.keys(sppuErrors).length > 0) {
                     showValidationSummary(sppuErrors);
+                    return;
+                  }
+                  const saved = await handleSaveDraft(true);
+                  if (!saved) {
+                    alert("Please save before moving to the next step.");
                     return;
                   }
                   setCurrentStep(3);
@@ -2933,13 +3369,16 @@ export default function FacultyAppraisalForm() {
                     }
                   >
                     <option value="">Role</option>
+                    <option value="4 Quadrant Course">4 Quadrant Course</option>
                     <option value="Course Coordinator">Course Coordinator</option>
                     <option value="Content Developer">Content Developer</option>
                     <option value="Module Writer">Module Writer</option>
                     <option value="Subject Expert">Subject Expert</option>
+                    <option value="Complete Course">Complete Course</option>
                     <option value="Per Module">Per Module</option>
                     <option value="Contribution">Contribution</option>
                     <option value="Editor">Editor</option>
+                    <option value="Development of Innovative Pedagogy">Development of Innovative Pedagogy</option>
                   </select>
 
                   <input
@@ -3099,6 +3538,19 @@ export default function FacultyAppraisalForm() {
                   </button>
                 </div>
               ))}
+              <button
+                className="btn-add"
+                onClick={() =>
+                  addResearchRow("awards", {
+                    level: "",
+                    title: "",
+                    year: "",
+                    enclosureNo: ""
+                  })
+                }
+              >
+                + Add Award / Fellowship
+              </button>
               <hr />
               <h4>9. Invited Lectures / Resource Person</h4>
 
@@ -3154,6 +3606,19 @@ export default function FacultyAppraisalForm() {
                   </button>
                 </div>
               ))}
+              <button
+                className="btn-add"
+                onClick={() =>
+                  addResearchRow("invitedTalks", {
+                    level: "",
+                    role: "",
+                    year: "",
+                    enclosureNo: ""
+                  })
+                }
+              >
+                + Add Invited Lecture
+              </button>
 
             </fieldset>
             {/* ========== NAVIGATION ========== */}
@@ -3162,7 +3627,17 @@ export default function FacultyAppraisalForm() {
                 ← Back
               </button>
 
-              <button className="btn-primary" onClick={() => setCurrentStep(5)}>
+              <button
+                className="btn-primary"
+                onClick={async () => {
+                  const saved = await handleSaveDraft(true);
+                  if (!saved) {
+                    alert("Please save before moving to the next step.");
+                    return;
+                  }
+                  setCurrentStep(5);
+                }}
+              >
                 Next →
               </button>
             </div>
@@ -3293,6 +3768,9 @@ export default function FacultyAppraisalForm() {
     </div >
   );
 }
+
+
+
 
 
 
