@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/FacultyAppraisalStatus.css";
-import { downloadWithAuth, getAccessToken } from "../../utils/downloadFile";
+import { downloadWithAuth } from "../../utils/downloadFile";
+import {
+  fetchAndCacheFacultyStatus,
+  readStatusCache,
+} from "../../utils/appraisalStatusCache";
 
 const USE_DUMMY_DATA = false;
 
@@ -38,43 +42,38 @@ export default function FacultyAppraisalStatus() {
       return;
     }
 
+    let alive = true;
+    const cached = readStatusCache();
+    if (cached) {
+      setAppraisalData(cached);
+      setLoading(false);
+    }
+
     const fetchStatus = async () => {
       try {
-        setLoading(true);
         setError(null);
-
-        const token = getAccessToken();
-        const response = await fetch("http://127.0.0.1:8000/api/faculty/appraisal/status/", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) throw new Error("Unauthorized");
-
-        const data = await response.json();
-        setAppraisalData({
-          underReview: data.under_review || [],
-          approved: data.approved || [],
-          changesRequested: data.changes_requested || [],
-        });
+        const normalized = await fetchAndCacheFacultyStatus();
+        if (!alive) return;
+        setAppraisalData(normalized);
       } catch (err) {
         console.error(err);
-        setError("Unable to load appraisal status");
+        if (alive) setError("Unable to load appraisal status");
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     };
 
     fetchStatus();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const downloadFile = async (url, filename) => {
     try {
       await downloadWithAuth(url, filename);
-    } catch (e) {
+    } catch {
       alert("Failed to download PDF. It might not be generated yet.");
     }
   };
@@ -148,24 +147,14 @@ export default function FacultyAppraisalStatus() {
               <div className="action-buttons">
                 <button
                   className="download-btn"
-                  onClick={() =>
-                    downloadFile(
-                      `http://127.0.0.1:8000${sppuUrl}`,
-                      `SPPU_${item.academic_year}.pdf`
-                    )
-                  }
+                  onClick={() => downloadFile(sppuUrl, `SPPU_${item.academic_year}.pdf`)}
                 >
                   Download SPPU
                 </button>
                 <button
                   className="download-btn"
                   style={{ backgroundColor: "#6d28d9" }}
-                  onClick={() =>
-                    downloadFile(
-                      `http://127.0.0.1:8000${pbasUrl}`,
-                      `PBAS_${item.academic_year}.pdf`
-                    )
-                  }
+                  onClick={() => downloadFile(pbasUrl, `PBAS_${item.academic_year}.pdf`)}
                 >
                   Download PBAS
                 </button>
@@ -220,6 +209,3 @@ export default function FacultyAppraisalStatus() {
     </div>
   );
 }
-
-
-

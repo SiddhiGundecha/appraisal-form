@@ -89,24 +89,22 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await API.post("token/", {
+      const response = await API.post("auth/login/", {
         username: email.trim(),
         password,
       });
 
       const { access, refresh } = response.data;
+      const user = response.data?.user || (await API.get("me/")).data;
       const lastRoute = sessionStorage.getItem("lastRoute");
 
       clearAuthStorage();
 
-      API.defaults.headers.common["Authorization"] = `Bearer ${access}`;
-
-      const profileRes = await API.get("me/");
-      const user = profileRes.data;
+      API.defaults.headers.common.Authorization = `Bearer ${access}`;
 
       saveAuth({ access, refresh, user, remember });
 
-      if (user.must_change_password) {
+      if (user?.must_change_password) {
         navigate("/faculty/profile?tab=password", { replace: true });
         return;
       }
@@ -116,7 +114,7 @@ export default function Login() {
         return;
       }
 
-      if (!routeByRole(navigate, user.role, false)) {
+      if (!routeByRole(navigate, user?.role, false)) {
         setError("Unauthorized role");
       }
     } catch (err) {
@@ -189,3 +187,5 @@ export default function Login() {
     </div>
   );
 }
+
+

@@ -1,18 +1,25 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
-import Login from "../pages/Login";
-import ForgotPassword from "../pages/ForgotPassword";
-import ResetPassword from "../pages/ResetPassword";
+const Login = lazy(() => import("../pages/Login"));
+const ForgotPassword = lazy(() => import("../pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("../pages/ResetPassword"));
 
-import FacultyDashboard from "../pages/faculty/Dashboard";
-import FacultyProfile from "../pages/faculty/Profile";
-import AppraisalForm from "../pages/faculty/AppraisalForm";
-import FacultyAppraisalStatus from "../pages/faculty/FacultyAppraisalStatus";
+const FacultyDashboard = lazy(() => import("../pages/faculty/Dashboard"));
+const FacultyProfile = lazy(() => import("../pages/faculty/Profile"));
+const AppraisalForm = lazy(() => import("../pages/faculty/AppraisalForm"));
+const FacultyAppraisalStatus = lazy(() => import("../pages/faculty/FacultyAppraisalStatus"));
 
-import HODDashboard from "../pages/HODDashboard";
+const HODDashboard = lazy(() => import("../pages/HODDashboard"));
+const PrincipalDashboard = lazy(() => import("../pages/PrincipalDashboard"));
 
-import PrincipalDashboard from "../pages/PrincipalDashboard";
+function RouteFallback() {
+  return (
+    <div style={{ minHeight: "30vh", display: "grid", placeItems: "center", fontWeight: 600 }}>
+      Loading...
+    </div>
+  );
+}
 
 export default function AppRouter() {
   const location = useLocation();
@@ -26,22 +33,24 @@ export default function AppRouter() {
   }, [location.pathname, location.search]);
 
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/login" />} />
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" />} />
 
-      <Route path="/login" element={<Login />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
-      <Route path="/faculty/profile" element={<FacultyProfile />} />
-      <Route path="/faculty/appraisal" element={<AppraisalForm />} />
-      <Route path="/faculty/appraisal/status" element={<FacultyAppraisalStatus />} />
+        <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
+        <Route path="/faculty/profile" element={<FacultyProfile />} />
+        <Route path="/faculty/appraisal" element={<AppraisalForm />} />
+        <Route path="/faculty/appraisal/status" element={<FacultyAppraisalStatus />} />
 
-      <Route path="/hod/dashboard" element={<HODDashboard />} />
-      <Route path="/hod/appraisal-form" element={<AppraisalForm />} />
+        <Route path="/hod/dashboard" element={<HODDashboard />} />
+        <Route path="/hod/appraisal-form" element={<AppraisalForm />} />
 
-      <Route path="/principal/dashboard" element={<PrincipalDashboard />} />
-    </Routes>
+        <Route path="/principal/dashboard" element={<PrincipalDashboard />} />
+      </Routes>
+    </Suspense>
   );
 }
