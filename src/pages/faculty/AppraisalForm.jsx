@@ -343,6 +343,11 @@ export default function FacultyAppraisalForm() {
     otherActivity: ""
   });
 
+  const STEP2_SOURCE_ACTIVITY_OPTIONS = DEFAULT_SPPU_ACTIVITY_SECTIONS.map((section) => ({
+    value: section.section_key,
+    label: section.label,
+  }));
+
   const getTypeActivities = (activityType) => {
     if (activityType === "departmental") return DEPARTMENTAL_ACTIVITIES;
     if (activityType === "institutional") return INSTITUTE_ACTIVITIES;
@@ -854,7 +859,7 @@ export default function FacultyAppraisalForm() {
     .filter((row) => row.isInvolved === "Yes")
     .map((row) => {
       const activityName = row.otherActivity?.trim() || row.activity;
-      const sectionKey = row.section_key || inferSectionKeyFromSelection(row.activityType, activityName);
+      const sectionKey = row.section_key;
       return {
         section_key: sectionKey,
         activity_name: activityName,
@@ -1323,7 +1328,25 @@ export default function FacultyAppraisalForm() {
     setCurrentStep(2);
   };
   const validateSPPU = () => {
-    return {};
+    const newErrors = {};
+    step2bActivities.forEach((row, index) => {
+      if (row.isInvolved !== "Yes") return;
+      if (!row.section_key) newErrors[`step2b_${index}_section`] = "Select one source activity";
+      if (!row.activityType) newErrors[`step2b_${index}_type`] = "Select activity type";
+      if (!row.activity) newErrors[`step2b_${index}_activity`] = "Select activity";
+      if (String(row.activity || "").toLowerCase().includes("any other") && !String(row.otherActivity || "").trim()) {
+        newErrors[`step2b_${index}_other`] = "Specify other activity";
+      }
+      const maxCredit = getMaxCreditForSelection(row.activityType, row.activity);
+      const creditValue = Number(row.credit || 0);
+      if (!Number.isFinite(creditValue) || creditValue < 0) {
+        newErrors[`step2b_${index}_credit`] = "Credit must be a non-negative number";
+      } else if (maxCredit > 0 && creditValue > maxCredit) {
+        newErrors[`step2b_${index}_credit`] = `Credit cannot exceed ${maxCredit} for selected activity`;
+      }
+    });
+    setErrors((prev) => ({ ...prev, ...newErrors }));
+    return newErrors;
   };
 
   const validateStep3Credits = () => {
@@ -2311,12 +2334,30 @@ export default function FacultyAppraisalForm() {
               {step2bActivities.map((row, index) => {
                 const activityOptions = getTypeActivities(row.activityType);
                 const maxCredit = getMaxCreditForSelection(row.activityType, row.activity);
-                const inferredSection = row.section_key || inferSectionKeyFromSelection(row.activityType, row.activity);
-                const sectionLabel = activitySections.find((s) => s.section_key === inferredSection)?.label || "-";
+                const sectionLabel = activitySections.find((s) => s.section_key === row.section_key)?.label || "-";
 
                 return (
                   <div className="activity-card" key={row.id || index}>
                     <div className="activity-row">
+                      <select
+                        value={row.section_key}
+                        onChange={(e) => {
+                          const section_key = e.target.value;
+                          setStep2bActivities((prev) => {
+                            const copy = [...prev];
+                            const next = { ...copy[index] };
+                            next.section_key = section_key;
+                            copy[index] = next;
+                            return copy;
+                          });
+                        }}
+                      >
+                        <option value="">Select Source Activity</option>
+                        {STEP2_SOURCE_ACTIVITY_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+
                       <select
                         value={row.activityType}
                         onChange={(e) => {
@@ -2326,7 +2367,7 @@ export default function FacultyAppraisalForm() {
                             const next = { ...copy[index] };
                             next.activityType = activityType;
                             next.activity = "";
-                            next.section_key = "";
+                            next.credit = "";
                             copy[index] = next;
                             return copy;
                           });
@@ -2347,7 +2388,10 @@ export default function FacultyAppraisalForm() {
                             const copy = [...prev];
                             const next = { ...copy[index] };
                             next.activity = activity;
-                            next.section_key = inferSectionKeyFromSelection(next.activityType, activity);
+                            const nextMax = getMaxCreditForSelection(next.activityType, activity);
+                            if (!next.credit || Number(next.credit) <= 0) {
+                              next.credit = nextMax > 0 ? String(nextMax) : "";
+                            }
                             copy[index] = next;
                             return copy;
                           });
@@ -2391,6 +2435,8 @@ export default function FacultyAppraisalForm() {
                     </div>
 
                     <div className="activity-row">
+                      <input value={maxCredit || ""} readOnly placeholder="Max Credit" />
+
                       <input
                         placeholder="Semester / Year"
                         value={row.semester}
@@ -2431,7 +2477,7 @@ export default function FacultyAppraisalForm() {
                       />
 
                       <div className="section-note" style={{ marginTop: "4px" }}>
-                        Max credit: {maxCredit || "-"} | 7-section map: {sectionLabel}
+                        Max credit: {maxCredit || "-"} | Selected source: {sectionLabel}
                       </div>
 
                       {step2bActivities.length > 1 && (
@@ -2440,7 +2486,7 @@ export default function FacultyAppraisalForm() {
                           className="btn-remove"
                           onClick={() => setStep2bActivities((prev) => prev.filter((_, i) => i !== index))}
                         >
-                          ?
+                          x
                         </button>
                       )}
                     </div>

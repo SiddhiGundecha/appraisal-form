@@ -389,6 +389,11 @@ export default function PrincipalDashboard() {
   if (selected) {
     return (
       <div className="hod-container">
+        {(previewNotice || isPreviewProcessing) && (
+          <div style={{ marginBottom: "10px", padding: "10px 12px", borderRadius: "6px", background: "#fffbeb", color: "#92400e", fontWeight: 600 }}>
+            {previewNotice || "Generating preview..."}
+          </div>
+        )}
         <button className="back-btn" onClick={() => setSelected(null)}>
           ← Back
         </button>
@@ -515,7 +520,7 @@ export default function PrincipalDashboard() {
                 type="button"
                 className="approve-btn"
                 style={{ height: '36px', padding: '0 14px' }}
-                onClick={() => previewPdf(`http://127.0.0.1:8000/api/appraisal/${selected.id}/pdf/sppu-enhanced/`)}
+                onClick={() => previewPdf(`/appraisal/${selected.id}/pdf/sppu-enhanced/`)}
               >
                 Preview SPPU Form
               </button>
@@ -523,7 +528,7 @@ export default function PrincipalDashboard() {
                 type="button"
                 className="approve-btn"
                 style={{ height: '36px', padding: '0 14px' }}
-                onClick={() => previewPdf(`http://127.0.0.1:8000/api/appraisal/${selected.id}/pdf/pbas-enhanced/`)}
+                onClick={() => previewPdf(`/appraisal/${selected.id}/pdf/pbas-enhanced/`)}
               >
                 Preview PBAS Form
               </button>
@@ -571,16 +576,6 @@ export default function PrincipalDashboard() {
           {verificationSavedAt && (
             <p style={{ fontSize: "0.85rem", color: "#4b5563", marginTop: "8px" }}>
               Last saved verified grading: {new Date(verificationSavedAt).toLocaleString()}
-            </p>
-          )}
-          {previewNotice && (
-            <p style={{ fontSize: "0.85rem", color: "#92400e", marginTop: "4px" }}>
-              {previewNotice}
-            </p>
-          )}
-          {isPreviewProcessing && (
-            <p style={{ fontSize: "0.85rem", color: "#92400e", marginTop: "4px" }}>
-              Generating preview...
             </p>
           )}
         </div>
@@ -691,8 +686,8 @@ export default function PrincipalDashboard() {
                     <div style={{ marginTop: '10px' }}>
                       <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>Download PDFs:</p>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button type="button" onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/sppu-enhanced/`, `SPPU_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>SPPU PDF</button>
-                        <button type="button" onClick={() => downloadPdf(`http://127.0.0.1:8000/api/appraisal/${s.id}/pdf/pbas-enhanced/`, `PBAS_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>PBAS PDF</button>
+                        <button type="button" onClick={() => downloadPdf(`/appraisal/${s.id}/pdf/sppu-enhanced/`, `SPPU_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>SPPU PDF</button>
+                        <button type="button" onClick={() => downloadPdf(`/appraisal/${s.id}/pdf/pbas-enhanced/`, `PBAS_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>PBAS PDF</button>
                       </div>
                     </div>
                   )}

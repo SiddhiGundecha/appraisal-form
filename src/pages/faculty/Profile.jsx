@@ -13,6 +13,23 @@ const formatDateDisplay = (value) => {
   if (isoMatch) return `${isoMatch[3]}-${isoMatch[2]}-${isoMatch[1]}`;
   return text;
 };
+const toISODate = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const match = text.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (match) return `${match[3]}-${match[2]}-${match[1]}`;
+  return text;
+};
+const normalizeProfileFields = (fields = {}) => {
+  const currentYearIso = `${new Date().getFullYear()}-01-01`;
+  return {
+    ...fields,
+    date_of_joining: toISODate(fields.date_of_joining),
+    eligibility_date: toISODate(fields.eligibility_date),
+    assessment_period: toISODate(fields.assessment_period) || currentYearIso,
+  };
+};
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -70,8 +87,9 @@ export default function Profile() {
   API.get("me/")
     .then(res => {
       const { profile_image, ...profileFields } = res.data || {};
-      setProfileData(profileFields);
-      setEditData(profileFields);
+      const normalizedFields = normalizeProfileFields(profileFields);
+      setProfileData(normalizedFields);
+      setEditData(normalizedFields);
       const imageUrl = withCacheBust(profile_image || DEFAULT_AVATAR);
       setProfileImage(imageUrl);
       setSavedProfileImage(imageUrl);
@@ -270,8 +288,9 @@ export default function Profile() {
     // 🔁 re-fetch updated data
       const res = await API.get("me/");
       const { profile_image, ...profileFields } = res.data || {};
-      setProfileData(profileFields);
-      setEditData(profileFields);
+      const normalizedFields = normalizeProfileFields(profileFields);
+      setProfileData(normalizedFields);
+      setEditData(normalizedFields);
       const imageUrl = withCacheBust(profile_image || DEFAULT_AVATAR);
       setProfileImage(imageUrl);
       setSavedProfileImage(imageUrl);
@@ -280,6 +299,7 @@ export default function Profile() {
       setIsEditing(false);
     } catch (err) {
       console.error(err.response?.data);
+      alert(err?.response?.data?.detail || "Failed to update profile");
     }
   };
 
@@ -324,8 +344,9 @@ export default function Profile() {
       setPassword({ current: "", newPass: "", confirm: "" });
       const res = await API.get("me/");
       const { profile_image, ...profileFields } = res.data || {};
-      setProfileData(profileFields);
-      setEditData(profileFields);
+      const normalizedFields = normalizeProfileFields(profileFields);
+      setProfileData(normalizedFields);
+      setEditData(normalizedFields);
       if (profile_image) {
         const imageUrl = withCacheBust(profile_image);
         setProfileImage(imageUrl);
@@ -431,6 +452,7 @@ export default function Profile() {
 
                   <input
                     name={k}
+                    type={isEditing && ["date_of_joining", "eligibility_date", "assessment_period"].includes(k) ? "date" : "text"}
                     value={
                       !isEditing && ["date_of_joining", "eligibility_date", "assessment_period"].includes(k)
                         ? formatDateDisplay(v)
