@@ -72,19 +72,33 @@ export default function Login() {
   const [error, setError] = useSessionState("login.error", "");
 
   useEffect(() => {
-    const access = localStorage.getItem("access") || sessionStorage.getItem("access");
-    if (!access) return;
+    const bootstrapAuth = async () => {
+      const access = localStorage.getItem("access") || sessionStorage.getItem("access");
+      if (!access) return;
 
-    const lastRoute = sessionStorage.getItem("lastRoute");
-    if (lastRoute && !["/login", "/forgot-password", "/reset-password"].includes(lastRoute)) {
-      navigate(lastRoute, { replace: true });
-      return;
-    }
+      // Do not trust persisted token blindly across deployments/sessions.
+      // Verify auth before redirecting away from login page.
+      try {
+        const meRes = await API.get("me/");
+        const user = meRes?.data || getStoredUser();
+        const normalizedRole = normalizeRole(user?.role);
+        if (!normalizedRole) {
+          clearAuthStorage();
+          return;
+        }
 
-    const user = getStoredUser();
-    if (user?.role) {
-      routeByRole(navigate, user.role, false);
-    }
+        const lastRoute = sessionStorage.getItem("lastRoute");
+        if (lastRoute && !["/login", "/forgot-password", "/reset-password"].includes(lastRoute)) {
+          navigate(lastRoute, { replace: true });
+          return;
+        }
+        routeByRole(navigate, normalizedRole, false);
+      } catch {
+        clearAuthStorage();
+      }
+    };
+
+    bootstrapAuth();
   }, [navigate]);
 
   const handleLogin = async (e) => {
