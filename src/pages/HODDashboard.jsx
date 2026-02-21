@@ -613,7 +613,7 @@ export default function HODDashboard() {
                   type="button"
                   className="approve-btn"
                   style={{ height: '36px', padding: '0 14px' }}
-                  onClick={() => previewPdf(`/appraisal/${selectedSubmission.appraisal_id}/pdf/sppu-enhanced/`)}
+                  onClick={() => previewPdf(`/api/appraisal/${selectedSubmission.appraisal_id}/pdf/sppu-enhanced/`)}
                 >
                   Preview SPPU Form
                 </button>
@@ -621,7 +621,7 @@ export default function HODDashboard() {
                   type="button"
                   className="approve-btn"
                   style={{ height: '36px', padding: '0 14px' }}
-                  onClick={() => previewPdf(`/appraisal/${selectedSubmission.appraisal_id}/pdf/pbas-enhanced/`)}
+                  onClick={() => previewPdf(`/api/appraisal/${selectedSubmission.appraisal_id}/pdf/pbas-enhanced/`)}
                 >
                   Preview PBAS Form
                 </button>
@@ -760,8 +760,8 @@ export default function HODDashboard() {
               <div style={{ marginTop: '12px', padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' }}>
                 <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#166534', fontSize: '14px' }}>📄 Download Your Appraisal PDFs:</p>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button type="button" onClick={() => downloadPdf(`/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/sppu-enhanced/`, `SPPU_${hodOwnAppraisal.academicYear}.pdf`)} style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>SPPU PDF</button>
-                  <button type="button" onClick={() => downloadPdf(`/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/pbas-enhanced/`, `PBAS_${hodOwnAppraisal.academicYear}.pdf`)} style={{ padding: '8px 16px', background: '#8b5cf6', color: 'white', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>PBAS PDF</button>
+                  <button type="button" onClick={() => downloadPdf(`/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/sppu-enhanced/`, `SPPU_${hodOwnAppraisal.academicYear}.pdf`)} style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>SPPU PDF</button>
+                  <button type="button" onClick={() => downloadPdf(`/api/appraisal/${hodOwnAppraisal.appraisal_id}/pdf/pbas-enhanced/`, `PBAS_${hodOwnAppraisal.academicYear}.pdf`)} style={{ padding: '8px 16px', background: '#8b5cf6', color: 'white', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>PBAS PDF</button>
                 </div>
               </div>
             )}
@@ -815,8 +815,8 @@ export default function HODDashboard() {
                   <div style={{ marginTop: '10px' }}>
                     <p style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '13px' }}>Download PDFs:</p>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => downloadPdf(`/appraisal/${sub.appraisal_id}/pdf/sppu-enhanced/`, `SPPU_${sub.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>SPPU</button>
-                      <button type="button" onClick={() => downloadPdf(`/appraisal/${sub.appraisal_id}/pdf/pbas-enhanced/`, `PBAS_${sub.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>PBAS</button>
+                      <button type="button" onClick={() => downloadPdf(`/api/appraisal/${sub.appraisal_id}/pdf/sppu-enhanced/`, `SPPU_${sub.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>SPPU</button>
+                      <button type="button" onClick={() => downloadPdf(`/api/appraisal/${sub.appraisal_id}/pdf/pbas-enhanced/`, `PBAS_${sub.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>PBAS</button>
                     </div>
                   </div>
                 )}

@@ -1066,6 +1066,11 @@ export default function FacultyAppraisalForm() {
           selected_activities: selectedSppuActivities.map((item) => ({
             section_key: item.section_key,
             activity_name: item.activity_name,
+            scope: item.scope,
+            credits_claimed: item.credits_claimed,
+            semester: item.semester,
+            criteria: item.criteria,
+            enclosure_no: item.enclosure_no,
           })),
           ...deriveSppuFlagsFromSelections(selectedSppuActivities),
         },

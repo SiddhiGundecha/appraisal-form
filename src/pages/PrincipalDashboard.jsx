@@ -520,7 +520,7 @@ export default function PrincipalDashboard() {
                 type="button"
                 className="approve-btn"
                 style={{ height: '36px', padding: '0 14px' }}
-                onClick={() => previewPdf(`/appraisal/${selected.id}/pdf/sppu-enhanced/`)}
+                onClick={() => previewPdf(`/api/appraisal/${selected.id}/pdf/sppu-enhanced/`)}
               >
                 Preview SPPU Form
               </button>
@@ -528,7 +528,7 @@ export default function PrincipalDashboard() {
                 type="button"
                 className="approve-btn"
                 style={{ height: '36px', padding: '0 14px' }}
-                onClick={() => previewPdf(`/appraisal/${selected.id}/pdf/pbas-enhanced/`)}
+                onClick={() => previewPdf(`/api/appraisal/${selected.id}/pdf/pbas-enhanced/`)}
               >
                 Preview PBAS Form
               </button>
@@ -686,8 +686,8 @@ export default function PrincipalDashboard() {
                     <div style={{ marginTop: '10px' }}>
                       <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>Download PDFs:</p>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button type="button" onClick={() => downloadPdf(`/appraisal/${s.id}/pdf/sppu-enhanced/`, `SPPU_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>SPPU PDF</button>
-                        <button type="button" onClick={() => downloadPdf(`/appraisal/${s.id}/pdf/pbas-enhanced/`, `PBAS_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>PBAS PDF</button>
+                        <button type="button" onClick={() => downloadPdf(`/api/appraisal/${s.id}/pdf/sppu-enhanced/`, `SPPU_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>SPPU PDF</button>
+                        <button type="button" onClick={() => downloadPdf(`/api/appraisal/${s.id}/pdf/pbas-enhanced/`, `PBAS_${s.academic_year}.pdf`)} style={{ padding: '6px 12px', background: '#8b5cf6', color: 'white', borderRadius: '4px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>PBAS PDF</button>
                       </div>
                     </div>
                   )}
