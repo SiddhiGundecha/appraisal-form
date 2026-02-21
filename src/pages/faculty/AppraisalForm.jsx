@@ -865,6 +865,12 @@ export default function FacultyAppraisalForm() {
         section_key: sectionKey,
         activity_name: activityName,
         scope: getScopeForSelection(sectionKey, activityName, row.activityType),
+        credits_claimed: row.credit === "" || row.credit === null || row.credit === undefined
+          ? 0
+          : Number(row.credit),
+        semester: row.semester || "",
+        criteria: row.criteria || "",
+        enclosure_no: row.enclosureNo || "",
       };
     })
     .filter((row) => row.section_key && row.activity_name);
@@ -2419,8 +2425,6 @@ export default function FacultyAppraisalForm() {
                     </div>
 
                     <div className="activity-row">
-                      <input value={maxCredit || ""} readOnly placeholder="Max Credit" />
-
                       <input
                         placeholder="Semester / Year"
                         value={row.semester}
