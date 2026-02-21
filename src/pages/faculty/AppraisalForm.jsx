@@ -115,12 +115,6 @@ const SECTION_TO_LEGACY = {
 };
 
 
-const STEP2_ACTIVITY_TYPE_OPTIONS = [
-  { value: "departmental", label: "Departmental" },
-  { value: "institutional", label: "Institutional" },
-  { value: "society", label: "Society" },
-];
-
 export default function FacultyAppraisalForm() {
   const CURRENT_ACADEMIC_YEAR = getCurrentAcademicYear();
 
@@ -343,23 +337,32 @@ export default function FacultyAppraisalForm() {
     otherActivity: ""
   });
 
-  const STEP2_SOURCE_ACTIVITY_OPTIONS = DEFAULT_SPPU_ACTIVITY_SECTIONS.map((section) => ({
+  const STEP2_SOURCE_ACTIVITY_OPTIONS = activitySections.map((section) => ({
     value: section.section_key,
     label: section.label,
   }));
 
-  const getTypeActivities = (activityType) => {
-    if (activityType === "departmental") return DEPARTMENTAL_ACTIVITIES;
-    if (activityType === "institutional") return INSTITUTE_ACTIVITIES;
-    if (activityType === "society") return SOCIETY_ACTIVITIES;
-    return [];
+  const normalizeText = (value) => String(value || "").trim().toLowerCase();
+
+  const getScopeLabel = (scope) => {
+    if (scope === "departmental") return "Departmental";
+    if (scope === "society") return "Society";
+    return "Institutional";
   };
 
-  const getActivityTypeLabel = (activityType) => {
-    if (activityType === "departmental") return "Departmental";
-    if (activityType === "institutional") return "Institutional";
-    if (activityType === "society") return "Society";
-    return "";
+  const getSectionDefinition = (sectionKey) =>
+    activitySections.find((item) => item.section_key === sectionKey);
+
+  const getScopeForSelection = (sectionKey, activityName, fallbackActivityType = "") => {
+    const section = getSectionDefinition(sectionKey);
+    const list = Array.isArray(section?.activities_with_scope) ? section.activities_with_scope : [];
+    const normalizedActivity = normalizeText(activityName);
+    const found = list.find((item) => normalizeText(item?.label) === normalizedActivity);
+    if (found?.scope) return found.scope;
+    if (fallbackActivityType === "departmental") return "departmental";
+    if (fallbackActivityType === "society") return "society";
+    if (fallbackActivityType === "institutional") return "institute";
+    return "institute";
   };
 
   const inferSectionKeyFromSelection = (activityType, activityName) => {
@@ -374,10 +377,11 @@ export default function FacultyAppraisalForm() {
     return "a_administrative";
   };
 
-  const getMaxCreditForSelection = (activityType, activityName) => {
-    if (activityType === "departmental") return getDepartmentPerActivityLimit();
-    if (activityType === "institutional") return getInstitutePerActivityLimit(activityName);
-    if (activityType === "society") return getSocietyPerActivityLimit();
+  const getMaxCreditForSelection = (sectionKey, activityName, fallbackActivityType = "") => {
+    const mappedScope = getScopeForSelection(sectionKey, activityName, fallbackActivityType);
+    if (mappedScope === "departmental") return getDepartmentPerActivityLimit();
+    if (mappedScope === "society") return getSocietyPerActivityLimit();
+    if (mappedScope === "institute") return getInstitutePerActivityLimit(activityName);
     return 0;
   };
 
@@ -739,7 +743,7 @@ export default function FacultyAppraisalForm() {
   }, []);
 
   useEffect(() => {
-    const hasMeaningfulStep2B = step2bActivities.some((row) => row.activityType || row.activity || row.credit || row.semester || row.enclosureNo);
+    const hasMeaningfulStep2B = step2bActivities.some((row) => row.section_key || row.activity || row.credit || row.semester || row.enclosureNo);
     if (hasMeaningfulStep2B) return;
 
     const derived = deriveStep2BFromLegacyRows(departmentalActivities, instituteActivities, societyActivities);
@@ -751,51 +755,48 @@ export default function FacultyAppraisalForm() {
   useEffect(() => {
     const activeRows = step2bActivities.filter((row) => row.isInvolved === "Yes" && (row.activity || row.otherActivity));
 
-    const mappedDepartmental = activeRows
-      .filter((row) => row.activityType === "departmental")
-      .map((row) => {
-        const activityName = row.otherActivity?.trim() || row.activity;
-        return {
-          mapping_id: row.id,
-          semester: row.semester || "",
-          section_key: row.section_key || inferSectionKeyFromSelection("departmental", activityName),
-          activity: activityName,
-          credit: row.credit || "",
-          criteria: row.criteria || "",
-          enclosureNo: row.enclosureNo || "",
-          otherActivity: row.otherActivity || "",
-        };
-      });
+    const normalizedRows = activeRows.map((row) => {
+      const activityName = row.otherActivity?.trim() || row.activity;
+      const scope = getScopeForSelection(row.section_key, activityName, row.activityType);
+      return { row, activityName, scope };
+    });
 
-    const mappedInstitutional = activeRows
-      .filter((row) => row.activityType === "institutional")
-      .map((row) => {
-        const activityName = row.otherActivity?.trim() || row.activity;
-        return {
-          mapping_id: row.id,
-          semester: row.semester || "",
-          activity: activityName,
-          credit: row.credit || "",
-          criteria: row.criteria || "",
-          enclosureNo: row.enclosureNo || "",
-          otherActivity: row.otherActivity || "",
-        };
-      });
+    const mappedDepartmental = normalizedRows
+      .filter(({ scope }) => scope === "departmental")
+      .map(({ row, activityName }) => ({
+        mapping_id: row.id,
+        semester: row.semester || "",
+        section_key: row.section_key || inferSectionKeyFromSelection("departmental", activityName),
+        activity: activityName,
+        credit: row.credit || "",
+        criteria: row.criteria || "",
+        enclosureNo: row.enclosureNo || "",
+        otherActivity: row.otherActivity || "",
+      }));
 
-    const mappedSociety = activeRows
-      .filter((row) => row.activityType === "society")
-      .map((row) => {
-        const activityName = row.otherActivity?.trim() || row.activity;
-        return {
-          mapping_id: row.id,
-          semester: row.semester || "",
-          activity: activityName,
-          credit: row.credit || "",
-          criteria: row.criteria || "",
-          enclosureNo: row.enclosureNo || "",
-          otherActivity: row.otherActivity || "",
-        };
-      });
+    const mappedInstitutional = normalizedRows
+      .filter(({ scope }) => scope === "institute")
+      .map(({ row, activityName }) => ({
+        mapping_id: row.id,
+        semester: row.semester || "",
+        activity: activityName,
+        credit: row.credit || "",
+        criteria: row.criteria || "",
+        enclosureNo: row.enclosureNo || "",
+        otherActivity: row.otherActivity || "",
+      }));
+
+    const mappedSociety = normalizedRows
+      .filter(({ scope }) => scope === "society")
+      .map(({ row, activityName }) => ({
+        mapping_id: row.id,
+        semester: row.semester || "",
+        activity: activityName,
+        credit: row.credit || "",
+        criteria: row.criteria || "",
+        enclosureNo: row.enclosureNo || "",
+        otherActivity: row.otherActivity || "",
+      }));
 
     setDepartmentalActivities((prev) => mergeMappedRows(prev, mappedDepartmental));
     setInstituteActivities((prev) => mergeMappedRows(prev, mappedInstitutional));
@@ -863,6 +864,7 @@ export default function FacultyAppraisalForm() {
       return {
         section_key: sectionKey,
         activity_name: activityName,
+        scope: getScopeForSelection(sectionKey, activityName, row.activityType),
       };
     })
     .filter((row) => row.section_key && row.activity_name);
@@ -1332,12 +1334,11 @@ export default function FacultyAppraisalForm() {
     step2bActivities.forEach((row, index) => {
       if (row.isInvolved !== "Yes") return;
       if (!row.section_key) newErrors[`step2b_${index}_section`] = "Select one source activity";
-      if (!row.activityType) newErrors[`step2b_${index}_type`] = "Select activity type";
       if (!row.activity) newErrors[`step2b_${index}_activity`] = "Select activity";
       if (String(row.activity || "").toLowerCase().includes("any other") && !String(row.otherActivity || "").trim()) {
         newErrors[`step2b_${index}_other`] = "Specify other activity";
       }
-      const maxCredit = getMaxCreditForSelection(row.activityType, row.activity);
+      const maxCredit = getMaxCreditForSelection(row.section_key, row.activity, row.activityType);
       const creditValue = Number(row.credit || 0);
       if (!Number.isFinite(creditValue) || creditValue < 0) {
         newErrors[`step2b_${index}_credit`] = "Credit must be a non-negative number";
@@ -2332,8 +2333,10 @@ export default function FacultyAppraisalForm() {
               </p>
 
               {step2bActivities.map((row, index) => {
-                const activityOptions = getTypeActivities(row.activityType);
-                const maxCredit = getMaxCreditForSelection(row.activityType, row.activity);
+                const activityOptions = getSectionActivities(row.section_key);
+                const maxCredit = getMaxCreditForSelection(row.section_key, row.activity, row.activityType);
+                const mappedScope = getScopeForSelection(row.section_key, row.activity || row.otherActivity, row.activityType);
+                const scopeLabel = getScopeLabel(mappedScope);
                 const sectionLabel = activitySections.find((s) => s.section_key === row.section_key)?.label || "-";
 
                 return (
@@ -2347,6 +2350,8 @@ export default function FacultyAppraisalForm() {
                             const copy = [...prev];
                             const next = { ...copy[index] };
                             next.section_key = section_key;
+                            next.activity = "";
+                            next.credit = "";
                             copy[index] = next;
                             return copy;
                           });
@@ -2359,36 +2364,15 @@ export default function FacultyAppraisalForm() {
                       </select>
 
                       <select
-                        value={row.activityType}
-                        onChange={(e) => {
-                          const activityType = e.target.value;
-                          setStep2bActivities((prev) => {
-                            const copy = [...prev];
-                            const next = { ...copy[index] };
-                            next.activityType = activityType;
-                            next.activity = "";
-                            next.credit = "";
-                            copy[index] = next;
-                            return copy;
-                          });
-                        }}
-                      >
-                        <option value="">Select Activity Type</option>
-                        {STEP2_ACTIVITY_TYPE_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-
-                      <select
                         value={row.activity}
-                        disabled={!row.activityType}
+                        disabled={!row.section_key}
                         onChange={(e) => {
                           const activity = e.target.value;
                           setStep2bActivities((prev) => {
                             const copy = [...prev];
                             const next = { ...copy[index] };
                             next.activity = activity;
-                            const nextMax = getMaxCreditForSelection(next.activityType, activity);
+                            const nextMax = getMaxCreditForSelection(next.section_key, activity, next.activityType);
                             if (!next.credit || Number(next.credit) <= 0) {
                               next.credit = nextMax > 0 ? String(nextMax) : "";
                             }
@@ -2399,7 +2383,7 @@ export default function FacultyAppraisalForm() {
                       >
                         <option value="">Select Activity</option>
                         {activityOptions.map((act, i) => (
-                          <option key={row.activityType + "_" + i} value={act}>{act}</option>
+                          <option key={row.section_key + "_" + i} value={act}>{act}</option>
                         ))}
                       </select>
 
@@ -2477,7 +2461,7 @@ export default function FacultyAppraisalForm() {
                       />
 
                       <div className="section-note" style={{ marginTop: "4px" }}>
-                        Max credit: {maxCredit || "-"} | Selected source: {sectionLabel}
+                        Max credit: {maxCredit || "-"} | Selected source: {sectionLabel} | Auto-mapped to: {scopeLabel}
                       </div>
 
                       {step2bActivities.length > 1 && (
@@ -2494,7 +2478,7 @@ export default function FacultyAppraisalForm() {
                     {String(row.activity || "").toLowerCase().includes("any other") && (
                       <div className="activity-row">
                         <input
-                          placeholder={"Specify other " + getActivityTypeLabel(row.activityType).toLowerCase() + " activity"}
+                          placeholder={"Specify other " + scopeLabel.toLowerCase() + " activity"}
                           value={row.otherActivity}
                           onChange={(e) => {
                             const otherActivity = e.target.value;
