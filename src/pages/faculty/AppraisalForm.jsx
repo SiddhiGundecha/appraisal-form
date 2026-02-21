@@ -25,84 +25,134 @@ const DEFAULT_SPPU_ACTIVITY_SECTIONS = [
   {
     section_key: "a_administrative",
     label: "Administrative responsibilities (HOD / Dean / Coordinator etc.)",
-    activities: [
-      "Departmental Library in charge",
-      "Cleanliness in charge",
-      "Departmental store/Purchase in-charge",
-      "Student Feedback in charge",
-      "In-charge/Member of AICTE/State Govt./University statutory committee",
-      "NBA/NACC coordinator",
-      "Rector/Warden/Canteen",
-      "Scholarship in-charge",
-      "Any other administrative activity",
+    activities_with_scope: [
+      { label: "Lab In charge", scope: "departmental" },
+      { label: "Time table In charge", scope: "departmental" },
+      { label: "Class Teacher", scope: "departmental" },
+      { label: "Student registration In charge", scope: "departmental" },
+      { label: "Student detention In charge", scope: "departmental" },
+      { label: "Cleanliness in charge", scope: "departmental" },
+      { label: "Departmental store/Purchase in-charge", scope: "departmental" },
+      { label: "Student Feedback In charge", scope: "departmental" },
+      { label: "Departmental Library in charge", scope: "departmental" },
+      { label: "NBA coordinator", scope: "institute" },
+      { label: "Internal/External Academic Monitoring Co-coordinator", scope: "institute" },
+      { label: "In-charge Internship", scope: "institute" },
+      { label: "Institute Web site Management", scope: "institute" },
+      { label: "Institute level networking and maintenance", scope: "institute" },
+      { label: "Building/Electrical Maintenance", scope: "institute" },
+      { label: "EPBX Activity", scope: "institute" },
+      { label: "Hardware and Software installation and maintenance", scope: "institute" },
+      { label: "Institute MIS In charge", scope: "institute" },
+      { label: "DTE MIS In charge", scope: "institute" },
+      { label: "RO/RBTE/Administrative Activity/Duties", scope: "institute" },
+      { label: "In-charge/Member of AICTE/State Govt./University Statutory Committee", scope: "institute" },
+      { label: "NBA/NAAC coordinator", scope: "institute" },
+      { label: "AICTE/University/DTE/AISHE/NIRF/ARIIA/RUSA/TEQIP/PCI/COA etc Activity in-charge", scope: "institute" },
+      { label: "HoD/Dean/Associate Dean/Library In-charge", scope: "institute" },
+      { label: "Rector/Warden/Canteen", scope: "institute" },
+      { label: "Earn and Learn Scheme/Scholarship In-charge", scope: "institute" },
+      { label: "Any other administrative activity", scope: "institute" },
     ],
   },
   {
     section_key: "b_exam_duties",
     label: "Examination & evaluation duties",
-    activities: [
-      "Practical/Exam timetable in charge",
-      "Internal/External academic monitoring coordinator",
-      "Exam activities/duties",
-      "Any other examination/evaluation duty",
+    activities_with_scope: [
+      { label: "Practical/Exam Time table in charge", scope: "departmental" },
+      { label: "Exam Activities/Duties", scope: "institute" },
+      { label: "Internal/External Academic Monitoring Co-coordinator", scope: "institute" },
+      { label: "Any other examination/evaluation duty", scope: "institute" },
     ],
   },
   {
     section_key: "c_student_related",
     label: "Student related co-curricular / extension activities",
-    activities: [
-      "Student Association (Chapter co-coordinator)",
-      "Project mentoring for project competition",
-      "Student counseling",
-      "Sports in charge and co-coordinator",
-      "PRO/Gymkhana/Gathering/Publicity/student club activity",
-      "Blood donation activity organization",
-      "Yoga classes",
-      "Medical camp/health camp organization",
-      "Literacy camp organization",
-      "Environmental awareness camp",
-      "Swachh Bharat mission / NCC / NSS activity",
-      "Any other student-related activity",
+    activities_with_scope: [
+      { label: "Student Association/Chapter Co-coordinator", scope: "departmental" },
+      { label: "Student Counseling", scope: "departmental" },
+      { label: "Project Mentoring for project Competition", scope: "departmental" },
+      { label: "Industrial visit In charge", scope: "departmental" },
+      { label: "Final Year Student Project Guide", scope: "departmental" },
+      { label: "Sports in charge and co-ordinator", scope: "institute" },
+      { label: "PRO/Gymkhana/Gathering/Publicity/student club activity", scope: "institute" },
+      { label: "Garden Maintenance/Tree Plantation", scope: "institute" },
+      { label: "Blood donation activity organization", scope: "society" },
+      { label: "Yoga Classes", scope: "society" },
+      { label: "Medical Camp/Health Camp Organization", scope: "society" },
+      { label: "Literacy Camp Organization", scope: "society" },
+      { label: "Environmental awareness camp", scope: "society" },
+      { label: "Swachh Bharat Mission/NCC/NSS activity", scope: "society" },
+      { label: "Tree Plantation and Garden Maintenance", scope: "society" },
+      { label: "Any other student-related activity", scope: "society" },
     ],
   },
   {
     section_key: "d_organizing_events",
     label: "Organizing seminars / workshops / conferences",
-    activities: [
-      "Initiative for CEP/STTP/testing consultancy",
-      "Organization of MOOCS/NPTEL/spoken tutorials/webinars",
-      "Organization of FDP/Conference/Training/Workshop",
-      "Induction program in charge",
-      "Any other event organization activity",
+    activities_with_scope: [
+      { label: "Guest Lecture Organization", scope: "institute" },
+      { label: "Project/Seminar Coordinator", scope: "institute" },
+      { label: "Initiative for CEP/STTP/Testing Consultancy", scope: "institute" },
+      { label: "Organization of MOOCS/NPTEL/Spoken Tutorials/IUCEE webinars", scope: "institute" },
+      { label: "Organization of FDP/Conference/Training/Workshop", scope: "institute" },
+      { label: "Induction Program In charge", scope: "institute" },
+      { label: "Any other event organization activity", scope: "institute" },
     ],
   },
   {
     section_key: "e_phd_guidance",
     label: "Guiding PhD students",
-    activities: [
-      "Evidence of activity involved in guiding PhD students",
-      "Any other PhD guidance activity",
+    activities_with_scope: [
+      { label: "PhD Supervisor", scope: "departmental" },
+      { label: "PhD Co-Supervisor", scope: "departmental" },
+      { label: "PhD Progress Committee Member", scope: "departmental" },
+      { label: "Any other PhD guidance activity", scope: "departmental" },
     ],
   },
   {
     section_key: "f_research_project",
     label: "Conducting minor / major research projects",
-    activities: [
-      "Conducting minor research project",
-      "Conducting major research project",
-      "Any other research project activity",
+    activities_with_scope: [
+      { label: "Consultancy (Research based)", scope: "institute" },
+      { label: "Conducting minor research project", scope: "institute" },
+      { label: "Conducting major research project", scope: "institute" },
+      { label: "Any other research project activity", scope: "institute" },
     ],
   },
   {
     section_key: "g_sponsored_project",
-    label: "Publication in UGC / Peer-reviewed journals",
-    activities: [
-      "Single or joint publication in peer-reviewed journal",
-      "Publication in UGC listed journal",
-      "Any other publication activity",
+    label: "Sponsored projects (national/international agencies)",
+    activities_with_scope: [
+      { label: "Sponsored project funded by national agency", scope: "institute" },
+      { label: "Sponsored project funded by international agency", scope: "society" },
+      { label: "Government Sponsored CSR Activities", scope: "society" },
+      { label: "Any other sponsored project activity", scope: "society" },
     ],
   },
 ];
+
+const normalizeActivitySections = (sections = []) =>
+  (Array.isArray(sections) ? sections : [])
+    .map((section) => {
+      const list = Array.isArray(section?.activities_with_scope)
+        ? section.activities_with_scope
+        : Array.isArray(section?.activities)
+          ? section.activities.map((label) => ({ label, scope: "institute" }))
+          : [];
+      const cleaned = list
+        .map((item) => ({
+          label: String(item?.label || "").trim(),
+          scope: String(item?.scope || "").trim().toLowerCase(),
+        }))
+        .filter((item) => item.label);
+      return {
+        ...section,
+        activities_with_scope: cleaned,
+        activities: cleaned.map((item) => item.label),
+      };
+    })
+    .filter((section) => section?.section_key);
 
 const SECTION_TO_LEGACY = {
   a_administrative: "administrative_responsibility",
@@ -148,7 +198,9 @@ export default function FacultyAppraisalForm() {
 
 
 
-  const [activitySections, setActivitySections] = useState(DEFAULT_SPPU_ACTIVITY_SECTIONS);
+  const [activitySections, setActivitySections] = useState(
+    normalizeActivitySections(DEFAULT_SPPU_ACTIVITY_SECTIONS)
+  );
   //new added
   const [departmentalActivities, setDepartmentalActivities] = useState([
     {
@@ -353,12 +405,31 @@ export default function FacultyAppraisalForm() {
   const getSectionDefinition = (sectionKey) =>
     activitySections.find((item) => item.section_key === sectionKey);
 
+  const findCanonicalActivity = (activityName) => {
+    const normalizedActivity = normalizeText(activityName);
+    if (!normalizedActivity) return null;
+    for (const section of activitySections) {
+      const list = Array.isArray(section?.activities_with_scope) ? section.activities_with_scope : [];
+      const found = list.find((item) => normalizeText(item?.label) === normalizedActivity);
+      if (found) {
+        return {
+          section_key: section.section_key,
+          scope: found.scope,
+          label: found.label,
+        };
+      }
+    }
+    return null;
+  };
+
   const getScopeForSelection = (sectionKey, activityName, fallbackActivityType = "") => {
     const section = getSectionDefinition(sectionKey);
     const list = Array.isArray(section?.activities_with_scope) ? section.activities_with_scope : [];
     const normalizedActivity = normalizeText(activityName);
     const found = list.find((item) => normalizeText(item?.label) === normalizedActivity);
     if (found?.scope) return found.scope;
+    const canonical = findCanonicalActivity(activityName);
+    if (canonical?.scope) return canonical.scope;
     if (fallbackActivityType === "departmental") return "departmental";
     if (fallbackActivityType === "society") return "society";
     if (fallbackActivityType === "institutional") return "institute";
@@ -366,11 +437,13 @@ export default function FacultyAppraisalForm() {
   };
 
   const inferSectionKeyFromSelection = (activityType, activityName) => {
+    const canonical = findCanonicalActivity(activityName);
+    if (canonical?.section_key) return canonical.section_key;
     const text = String(activityName || "").toLowerCase();
     if (activityType === "society") return "c_student_related";
     if (text.includes("phd")) return "e_phd_guidance";
     if (text.includes("research") || text.includes("consultancy") || text.includes("project")) return "f_research_project";
-    if (text.includes("publication") || text.includes("journal")) return "g_sponsored_project";
+    if (text.includes("sponsored") || text.includes("csr") || text.includes("national agency") || text.includes("international agency")) return "g_sponsored_project";
     if (text.includes("exam") || text.includes("evaluation") || text.includes("timetable")) return "b_exam_duties";
     if (text.includes("conference") || text.includes("workshop") || text.includes("fdp") || text.includes("webinar") || text.includes("mooc") || text.includes("induction")) return "d_organizing_events";
     if (text.includes("student") || text.includes("sports") || text.includes("counsel") || text.includes("ncc") || text.includes("nss") || text.includes("blood") || text.includes("yoga")) return "c_student_related";
@@ -428,10 +501,11 @@ export default function FacultyAppraisalForm() {
     (instRows || []).forEach((row, index) => {
       const activity = row.otherActivity?.trim() || row.activity || "";
       if (!activity) return;
+      const canonical = findCanonicalActivity(activity);
       rows.push({
         id: `legacy_inst_${index}_${Date.now()}`,
         activityType: "institutional",
-        section_key: inferSectionKeyFromSelection("institutional", activity),
+        section_key: row.section_key || row.section || canonical?.section_key || inferSectionKeyFromSelection("institutional", activity),
         activity,
         isInvolved: "Yes",
         semester: row.semester || "",
@@ -445,10 +519,11 @@ export default function FacultyAppraisalForm() {
     (socRows || []).forEach((row, index) => {
       const activity = row.otherActivity?.trim() || row.activity || "";
       if (!activity) return;
+      const canonical = findCanonicalActivity(activity);
       rows.push({
         id: `legacy_soc_${index}_${Date.now()}`,
         activityType: "society",
-        section_key: inferSectionKeyFromSelection("society", activity),
+        section_key: row.section_key || row.section || canonical?.section_key || inferSectionKeyFromSelection("society", activity),
         activity,
         isInvolved: "Yes",
         semester: row.semester || "",
@@ -602,7 +677,7 @@ export default function FacultyAppraisalForm() {
     API.get(`appraisal/current/?is_hod=${isHOD}`)
       .then(res => {
         if (Array.isArray(res.data?.activity_sections) && res.data.activity_sections.length > 0) {
-          setActivitySections(res.data.activity_sections);
+          setActivitySections(normalizeActivitySections(res.data.activity_sections));
         }
         if (res.data && res.data.appraisal_data) {
           const aid = res.data.id || res.data.appraisal_id;
@@ -706,7 +781,9 @@ export default function FacultyAppraisalForm() {
               setInstituteActivities(draft.pbas.institute_activities.map(i => ({
                 activity: i.activity || "",
                 semester: i.semester || "",
+                section_key: i.section_key || i.section || "",
                 credit: i.credits_claimed || i.credit || "",
+                criteria: i.criteria || i.remarks || "",
                 enclosureNo: i.enclosure_no || i.enclosure || ""
               })));
             }
@@ -714,7 +791,9 @@ export default function FacultyAppraisalForm() {
               setSocietyActivities(draft.pbas.society_activities.map(s => ({
                 activity: s.activity || "",
                 semester: s.semester || "",
+                section_key: s.section_key || s.section || "",
                 credit: s.credits_claimed || s.credit || "",
+                criteria: s.criteria || s.remarks || "",
                 enclosureNo: s.enclosure_no || s.enclosure || ""
               })));
             }
@@ -779,6 +858,7 @@ export default function FacultyAppraisalForm() {
       .map(({ row, activityName }) => ({
         mapping_id: row.id,
         semester: row.semester || "",
+        section_key: row.section_key || inferSectionKeyFromSelection("institutional", activityName),
         activity: activityName,
         credit: row.credit || "",
         criteria: row.criteria || "",
@@ -791,6 +871,7 @@ export default function FacultyAppraisalForm() {
       .map(({ row, activityName }) => ({
         mapping_id: row.id,
         semester: row.semester || "",
+        section_key: row.section_key || inferSectionKeyFromSelection("society", activityName),
         activity: activityName,
         credit: row.credit || "",
         criteria: row.criteria || "",
@@ -1134,14 +1215,20 @@ export default function FacultyAppraisalForm() {
 
           institute_activities: instituteActivities.map(a => ({
             semester: a.semester,
+            section_key: a.section_key || "",
             activity: a.activity,
+            activity_name: a.activity,
+            criteria: a.criteria || "",
             credits_claimed: Number(a.credit),
             enclosure_no: a.enclosureNo || null
           })),
 
           society_activities: societyActivities.map(a => ({
             semester: a.semester,
+            section_key: a.section_key || "",
             activity: a.activity,
+            activity_name: a.activity,
+            criteria: a.criteria || "",
             credits_claimed: Number(a.credit),
             enclosure_no: a.enclosureNo || null
           }))
