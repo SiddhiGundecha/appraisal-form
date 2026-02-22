@@ -131,8 +131,10 @@ export default function PrincipalDashboard() {
   };
 
   const handleApprove = async () => {
-    const saved = await handleSaveVerifiedGrading();
-    if (!saved) return;
+    if (selected.is_hod_appraisal) {
+      const saved = await handleSaveVerifiedGrading();
+      if (!saved) return;
+    }
 
     try {
       await API.post(
@@ -551,7 +553,7 @@ export default function PrincipalDashboard() {
             )}
 
 
-            {selected.status === "REVIEWED_BY_PRINCIPAL" && (
+            {selected.status === "REVIEWED_BY_PRINCIPAL" && selected.is_hod_appraisal && (
               <button className="approve-btn" onClick={handleSaveVerifiedGrading} disabled={isSavingVerification}>
                 {isSavingVerification ? "Saving..." : "Save/Confirm Verified Grading"}
               </button>
