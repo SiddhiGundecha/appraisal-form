@@ -416,7 +416,7 @@ export default function HODDashboard() {
       const blobUrl = window.URL.createObjectURL(blob);
       window.open(blobUrl, "_blank", "noopener,noreferrer");
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
-      setPreviewNotice("Processing complete. You may continue.");
+      setPreviewNotice("Processing complete. You may continue to view the PDF.");
     } catch (err) {
       console.error(err);
       alert("Failed to preview PDF.");
@@ -432,11 +432,6 @@ export default function HODDashboard() {
   if (selectedSubmission) {
     return (
       <div className="hod-container">
-        {(previewNotice || isPreviewProcessing) && (
-          <div style={{ marginBottom: "10px", padding: "10px 12px", borderRadius: "6px", background: "#fffbeb", color: "#92400e", fontWeight: 600 }}>
-            {previewNotice || "Generating preview..."}
-          </div>
-        )}
         <button className="back-btn" onClick={() => setSelectedSubmission(null)}>
           ← Back to Dashboard
         </button>
@@ -608,23 +603,30 @@ export default function HODDashboard() {
 
           {
             selectedSubmission.appraisal_id && (
-              <div style={{ marginTop: '18px', marginBottom: '4px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="approve-btn"
-                  style={{ height: '36px', padding: '0 14px' }}
-                  onClick={() => previewPdf(`/api/appraisal/${selectedSubmission.appraisal_id}/pdf/sppu-enhanced/`)}
-                >
-                  Preview SPPU Form
-                </button>
-                <button
-                  type="button"
-                  className="approve-btn"
-                  style={{ height: '36px', padding: '0 14px' }}
-                  onClick={() => previewPdf(`/api/appraisal/${selectedSubmission.appraisal_id}/pdf/pbas-enhanced/`)}
-                >
-                  Preview PBAS Form
-                </button>
+              <div style={{ marginTop: '18px', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="approve-btn"
+                    style={{ height: '36px', padding: '0 14px' }}
+                    onClick={() => previewPdf(`/api/appraisal/${selectedSubmission.appraisal_id}/pdf/sppu-enhanced/`)}
+                  >
+                    Preview SPPU Form
+                  </button>
+                  <button
+                    type="button"
+                    className="approve-btn"
+                    style={{ height: '36px', padding: '0 14px' }}
+                    onClick={() => previewPdf(`/api/appraisal/${selectedSubmission.appraisal_id}/pdf/pbas-enhanced/`)}
+                  >
+                    Preview PBAS Form
+                  </button>
+                </div>
+                {(previewNotice || isPreviewProcessing) && (
+                  <div style={{ marginTop: "10px", padding: "10px 12px", borderRadius: "6px", background: "#fffbeb", color: "#92400e", fontWeight: 600 }}>
+                    {previewNotice || "Generating preview..."}
+                  </div>
+                )}
               </div>
             )
           }
