@@ -84,6 +84,7 @@ export default function PrincipalDashboard() {
   const [verificationSavedAt, setVerificationSavedAt] = useState("");
   const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
   const [previewNotice, setPreviewNotice] = useState("");
+  const [isFinalizingPdf, setIsFinalizingPdf] = useState(false);
 
   const handleStartReview = async () => {
     try {
@@ -168,6 +169,7 @@ export default function PrincipalDashboard() {
 
   const handleFinalize = async () => {
     try {
+      setIsFinalizingPdf(true);
       await API.post(`principal/appraisal/${selected.id}/finalize/`);
 
       alert("Appraisal finalized & PDFs generated");
@@ -176,6 +178,8 @@ export default function PrincipalDashboard() {
     } catch (err) {
       alert("Finalize failed");
       console.error(err);
+    } finally {
+      setIsFinalizingPdf(false);
     }
   };
 
@@ -568,9 +572,16 @@ export default function PrincipalDashboard() {
             )}
 
             {selected.status === "PRINCIPAL_APPROVED" && (
-              <button className="approve-btn" onClick={handleFinalize}>
-                Finalize & Generate PDF
-              </button>
+              <>
+                <button className="approve-btn" onClick={handleFinalize} disabled={isFinalizingPdf}>
+                  Finalize & Generate PDF
+                </button>
+                {isFinalizingPdf && (
+                  <p style={{ marginTop: "8px", color: "#92400e", fontWeight: 600 }}>
+                    Finalizing the pdf's please wait. Do not refresh
+                  </p>
+                )}
+              </>
             )}
 
             <button className="reject-btn" onClick={handleSendBack}>

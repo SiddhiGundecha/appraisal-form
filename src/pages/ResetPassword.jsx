@@ -14,8 +14,7 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const uid = searchParams.get("uid") || "";
-  const token = searchParams.get("token") || "";
+  const email = searchParams.get("email") || "";
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -23,7 +22,7 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hasValidParams = Boolean(uid && token);
+  const hasValidParams = Boolean(email);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +30,7 @@ export default function ResetPassword() {
     setError("");
 
     if (!hasValidParams) {
-      setError("Reset link is invalid or incomplete.");
+      setError("Email is missing. Start again from Forgot Password.");
       return;
     }
 
@@ -48,8 +47,7 @@ export default function ResetPassword() {
     setIsSubmitting(true);
     try {
       const response = await API.post("auth/reset-password/", {
-        uid,
-        token,
+        email,
         new_password: newPassword,
       });
 
@@ -79,11 +77,14 @@ export default function ResetPassword() {
 
         {!hasValidParams && (
           <p className="rp-message" style={{ color: "#b91c1c" }}>
-            Invalid reset link. Request a new one.
+            Invalid request. Please use Forgot Password again.
           </p>
         )}
 
         <form onSubmit={handleSubmit}>
+          <label>Email</label>
+          <input type="text" value={email} disabled />
+
           <label>New Password</label>
           <input
             type="password"

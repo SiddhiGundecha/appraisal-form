@@ -8,14 +8,12 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [debugLink, setDebugLink] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
     setError("");
-    setDebugLink("");
 
     if (!email.trim()) {
       setError("Please enter your registered email.");
@@ -30,11 +28,12 @@ export default function ForgotPassword() {
         { timeout: 15000 }
       );
 
-      setMessage(
-        response?.data?.detail ||
-          "If an account exists, a reset link has been sent."
-      );
-      setDebugLink(response?.data?.debug?.reset_link || "");
+      if (response?.data?.email_exists) {
+        navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`);
+        return;
+      }
+
+      setError(response?.data?.detail || "No active account found for this email.");
     } catch (err) {
       const detail = err?.response?.data?.detail;
       const timeoutHit = err?.code === "ECONNABORTED";
@@ -60,7 +59,7 @@ export default function ForgotPassword() {
 
       <div className="fp-card">
         <h2>Forgot Password</h2>
-        <p className="fp-subtitle">Enter your registered email to receive a reset link.</p>
+        <p className="fp-subtitle">Enter your registered email to continue resetting password.</p>
 
         <form onSubmit={handleSubmit}>
           <label>Email</label>
@@ -74,14 +73,9 @@ export default function ForgotPassword() {
 
           {error && <p className="fp-message" style={{ color: "#b91c1c" }}>{error}</p>}
           {message && <p className="fp-message">{message}</p>}
-          {debugLink && (
-            <p className="fp-message">
-              Dev link: <a href={debugLink}>{debugLink}</a>
-            </p>
-          )}
 
           <button type="submit" className="fp-btn" disabled={isSubmitting}>
-            {isSubmitting ? "Sending..." : "Send Reset Link"}
+            {isSubmitting ? "Checking..." : "Continue"}
           </button>
         </form>
 
