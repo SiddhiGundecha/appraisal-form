@@ -2648,17 +2648,6 @@ export default function FacultyAppraisalForm() {
                 + Add Activity Row
               </button>
 
-              <div className="sppu-summary">
-                {activitySections.map((section) => {
-                  const yes = selectedSppuActivities.some((item) => item.section_key === section.section_key);
-                  return (
-                    <div className="sppu-row" key={section.section_key}>
-                      <label className="sppu-label">{section.label}</label>
-                      <div className="sppu-options"><strong>{yes ? "Yes" : "No"}</strong></div>
-                    </div>
-                  );
-                })}
-              </div>
             </fieldset>
             {/* NAVIGATION */}
             <div className="form-actions">
