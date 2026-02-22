@@ -458,6 +458,69 @@ export default function FacultyAppraisalForm() {
     return 0;
   };
 
+  const getNormalizedStep2BRows = () =>
+    (step2bActivities || [])
+      .map((row, index) => {
+        const activityName = row.otherActivity?.trim() || row.activity || "";
+        const scope = getScopeForSelection(row.section_key, activityName, row.activityType);
+        const credit = Number(row.credit || 0);
+        return {
+          row,
+          index,
+          activityName,
+          scope,
+          credit: Number.isFinite(credit) ? credit : 0,
+        };
+      })
+      .filter(({ row, activityName }) => row.section_key && activityName);
+
+  const deriveBucketsFromStep2B = () => {
+    const normalizedRows = getNormalizedStep2BRows();
+    const departmental = normalizedRows
+      .filter(({ scope }) => scope === "departmental")
+      .map(({ row, activityName, credit }) => ({
+        mapping_id: row.id,
+        semester: row.semester || "",
+        section_key: row.section_key || inferSectionKeyFromSelection("departmental", activityName),
+        activity: activityName,
+        credit: row.credit || "",
+        criteria: row.criteria || "",
+        enclosureNo: row.enclosureNo || "",
+        otherActivity: row.otherActivity || "",
+        credits_claimed: credit,
+      }));
+
+    const institute = normalizedRows
+      .filter(({ scope }) => scope === "institute")
+      .map(({ row, activityName, credit }) => ({
+        mapping_id: row.id,
+        semester: row.semester || "",
+        section_key: row.section_key || inferSectionKeyFromSelection("institutional", activityName),
+        activity: activityName,
+        credit: row.credit || "",
+        criteria: row.criteria || "",
+        enclosureNo: row.enclosureNo || "",
+        otherActivity: row.otherActivity || "",
+        credits_claimed: credit,
+      }));
+
+    const society = normalizedRows
+      .filter(({ scope }) => scope === "society")
+      .map(({ row, activityName, credit }) => ({
+        mapping_id: row.id,
+        semester: row.semester || "",
+        section_key: row.section_key || inferSectionKeyFromSelection("society", activityName),
+        activity: activityName,
+        credit: row.credit || "",
+        criteria: row.criteria || "",
+        enclosureNo: row.enclosureNo || "",
+        otherActivity: row.otherActivity || "",
+        credits_claimed: credit,
+      }));
+
+    return { departmental, institute, society };
+  };
+
   const mergeMappedRows = (existingRows, mappedRows) => {
     const manualRows = (existingRows || []).filter((row) => !row.mapping_id);
     const existingById = new Map((existingRows || []).filter((row) => row.mapping_id).map((row) => [row.mapping_id, row]));
@@ -832,57 +895,15 @@ export default function FacultyAppraisalForm() {
   }, [departmentalActivities, instituteActivities, societyActivities]);
 
   useEffect(() => {
-    const activeRows = step2bActivities.filter((row) => row.isInvolved === "Yes" && (row.activity || row.otherActivity));
-
-    const normalizedRows = activeRows.map((row) => {
-      const activityName = row.otherActivity?.trim() || row.activity;
-      const scope = getScopeForSelection(row.section_key, activityName, row.activityType);
-      return { row, activityName, scope };
-    });
-
-    const mappedDepartmental = normalizedRows
-      .filter(({ scope }) => scope === "departmental")
-      .map(({ row, activityName }) => ({
-        mapping_id: row.id,
-        semester: row.semester || "",
-        section_key: row.section_key || inferSectionKeyFromSelection("departmental", activityName),
-        activity: activityName,
-        credit: row.credit || "",
-        criteria: row.criteria || "",
-        enclosureNo: row.enclosureNo || "",
-        otherActivity: row.otherActivity || "",
-      }));
-
-    const mappedInstitutional = normalizedRows
-      .filter(({ scope }) => scope === "institute")
-      .map(({ row, activityName }) => ({
-        mapping_id: row.id,
-        semester: row.semester || "",
-        section_key: row.section_key || inferSectionKeyFromSelection("institutional", activityName),
-        activity: activityName,
-        credit: row.credit || "",
-        criteria: row.criteria || "",
-        enclosureNo: row.enclosureNo || "",
-        otherActivity: row.otherActivity || "",
-      }));
-
-    const mappedSociety = normalizedRows
-      .filter(({ scope }) => scope === "society")
-      .map(({ row, activityName }) => ({
-        mapping_id: row.id,
-        semester: row.semester || "",
-        section_key: row.section_key || inferSectionKeyFromSelection("society", activityName),
-        activity: activityName,
-        credit: row.credit || "",
-        criteria: row.criteria || "",
-        enclosureNo: row.enclosureNo || "",
-        otherActivity: row.otherActivity || "",
-      }));
+    const mapped = deriveBucketsFromStep2B();
+    const mappedDepartmental = mapped.departmental;
+    const mappedInstitutional = mapped.institute;
+    const mappedSociety = mapped.society;
 
     setDepartmentalActivities((prev) => mergeMappedRows(prev, mappedDepartmental));
     setInstituteActivities((prev) => mergeMappedRows(prev, mappedInstitutional));
     setSocietyActivities((prev) => mergeMappedRows(prev, mappedSociety));
-  }, [step2bActivities]);
+  }, [step2bActivities, activitySections]);
 
   const handleGeneralChange = (e) => {
     const { name, value } = e.target;
@@ -937,24 +958,15 @@ export default function FacultyAppraisalForm() {
     return Array.isArray(section?.activities) ? section.activities : [];
   };
 
-  const selectedSppuActivities = step2bActivities
-    .filter((row) => row.isInvolved === "Yes")
-    .map((row) => {
-      const activityName = row.otherActivity?.trim() || row.activity;
-      const sectionKey = row.section_key;
-      return {
-        section_key: sectionKey,
-        activity_name: activityName,
-        scope: getScopeForSelection(sectionKey, activityName, row.activityType),
-        credits_claimed: row.credit === "" || row.credit === null || row.credit === undefined
-          ? 0
-          : Number(row.credit),
-        semester: row.semester || "",
-        criteria: row.criteria || "",
-        enclosure_no: row.enclosureNo || "",
-      };
-    })
-    .filter((row) => row.section_key && row.activity_name);
+  const selectedSppuActivities = getNormalizedStep2BRows().map(({ row, activityName, scope, credit }) => ({
+    section_key: row.section_key,
+    activity_name: activityName,
+    scope,
+    credits_claimed: credit,
+    semester: row.semester || "",
+    criteria: row.criteria || "",
+    enclosure_no: row.enclosureNo || "",
+  }));
 
   const [teachingActivities, setTeachingActivities] = useState([
     {
@@ -1105,6 +1117,7 @@ export default function FacultyAppraisalForm() {
       (sum, t) => sum + Number(t.classesConducted),
       0
     );
+    const mappedBuckets = deriveBucketsFromStep2B();
 
     return {
       academic_year: generalInfo.academicYear,
@@ -1202,34 +1215,34 @@ export default function FacultyAppraisalForm() {
             enclosure_no: f.enclosureNo || ""
           })),
 
-          departmental_activities: departmentalActivities.map(a => ({
+          departmental_activities: mappedBuckets.departmental.map(a => ({
             semester: a.semester,
             section_key: a.section_key || "",
             activity: a.otherActivity?.trim() || a.activity,
             criteria: a.criteria,
-            credit: Number(a.credit),
-            credits_claimed: Number(a.credit),
+            credit: Number(a.credits_claimed || a.credit),
+            credits_claimed: Number(a.credits_claimed || a.credit),
             enclosure: a.enclosureNo || "",
             enclosure_no: a.enclosureNo || ""
           })),
 
-          institute_activities: instituteActivities.map(a => ({
+          institute_activities: mappedBuckets.institute.map(a => ({
             semester: a.semester,
             section_key: a.section_key || "",
             activity: a.activity,
             activity_name: a.activity,
             criteria: a.criteria || "",
-            credits_claimed: Number(a.credit),
+            credits_claimed: Number(a.credits_claimed || a.credit),
             enclosure_no: a.enclosureNo || null
           })),
 
-          society_activities: societyActivities.map(a => ({
+          society_activities: mappedBuckets.society.map(a => ({
             semester: a.semester,
             section_key: a.section_key || "",
             activity: a.activity,
             activity_name: a.activity,
             criteria: a.criteria || "",
-            credits_claimed: Number(a.credit),
+            credits_claimed: Number(a.credits_claimed || a.credit),
             enclosure_no: a.enclosureNo || null
           }))
         },
@@ -1429,8 +1442,8 @@ export default function FacultyAppraisalForm() {
   };
   const validateSPPU = () => {
     const newErrors = {};
+    const totals = { departmental: 0, institute: 0, society: 0 };
     step2bActivities.forEach((row, index) => {
-      if (row.isInvolved !== "Yes") return;
       if (!row.section_key) newErrors[`step2b_${index}_section`] = "Select one source activity";
       if (!row.activity) newErrors[`step2b_${index}_activity`] = "Select activity";
       if (String(row.activity || "").toLowerCase().includes("any other") && !String(row.otherActivity || "").trim()) {
@@ -1442,20 +1455,28 @@ export default function FacultyAppraisalForm() {
         newErrors[`step2b_${index}_credit`] = "Credit must be a non-negative number";
       } else if (maxCredit > 0 && creditValue > maxCredit) {
         newErrors[`step2b_${index}_credit`] = `Credit cannot exceed ${maxCredit} for selected activity`;
+      } else {
+        const activityName = row.otherActivity?.trim() || row.activity;
+        const scope = getScopeForSelection(row.section_key, activityName, row.activityType);
+        if (scope === "departmental") totals.departmental += creditValue;
+        if (scope === "institute") totals.institute += creditValue;
+        if (scope === "society") totals.society += creditValue;
       }
     });
+    if (totals.departmental > 20) newErrors.step2b_department_total = "Total departmental credits cannot exceed 20";
+    if (totals.institute > 10) newErrors.step2b_institute_total = "Total institutional credits cannot exceed 10";
+    if (totals.society > 10) newErrors.step2b_society_total = "Total society credits cannot exceed 10";
     setErrors((prev) => ({ ...prev, ...newErrors }));
     return newErrors;
   };
 
   const validateStep3Credits = () => {
     const newErrors = {};
+    const mapped = deriveBucketsFromStep2B();
 
     let deptTotal = 0;
-    departmentalActivities.forEach((row, index) => {
-      const raw = row.credit;
-      if (raw === "" || raw === null || raw === undefined) return;
-      const val = Number(raw);
+    mapped.departmental.forEach((row, index) => {
+      const val = Number(row.credits_claimed || row.credit || 0);
       if (!Number.isFinite(val) || val < 0) {
         newErrors[`dept_${index}_credit`] = "Credit must be a non-negative number";
         return;
@@ -1470,10 +1491,8 @@ export default function FacultyAppraisalForm() {
     }
 
     let instituteTotal = 0;
-    instituteActivities.forEach((row, index) => {
-      const raw = row.credit;
-      if (raw === "" || raw === null || raw === undefined) return;
-      const val = Number(raw);
+    mapped.institute.forEach((row, index) => {
+      const val = Number(row.credits_claimed || row.credit || 0);
       if (!Number.isFinite(val) || val < 0) {
         newErrors[`inst_${index}_credit`] = "Credit must be a non-negative number";
         return;
@@ -1489,10 +1508,8 @@ export default function FacultyAppraisalForm() {
     }
 
     let societyTotal = 0;
-    societyActivities.forEach((row, index) => {
-      const raw = row.credit;
-      if (raw === "" || raw === null || raw === undefined) return;
-      const val = Number(raw);
+    mapped.society.forEach((row, index) => {
+      const val = Number(row.credits_claimed || row.credit || 0);
       if (!Number.isFinite(val) || val < 0) {
         newErrors[`soc_${index}_credit`] = "Credit must be a non-negative number";
         return;
@@ -1649,6 +1666,7 @@ export default function FacultyAppraisalForm() {
 
 
   const buildPBASScores = () => {
+    const mapped = deriveBucketsFromStep2B();
     const totalAssigned = teachingActivities.reduce(
       (s, t) => s + Number(t.totalClassesAssigned || 0),
       0
@@ -1676,24 +1694,24 @@ export default function FacultyAppraisalForm() {
     );
 
     const department = Math.min(
-      departmentalActivities.reduce(
-        (s, a) => s + Number(a.credit || 0),
+      mapped.departmental.reduce(
+        (s, a) => s + Number(a.credits_claimed || a.credit || 0),
         0
       ),
       20
     );
 
     const institute = Math.min(
-      instituteActivities.reduce(
-        (s, a) => s + Number(a.credit || 0),
+      mapped.institute.reduce(
+        (s, a) => s + Number(a.credits_claimed || a.credit || 0),
         0
       ),
       10
     );
 
     const society = Math.min(
-      societyActivities.reduce(
-        (s, a) => s + Number(a.credit || 0),
+      mapped.society.reduce(
+        (s, a) => s + Number(a.credits_claimed || a.credit || 0),
         0
       ),
       10
@@ -2491,9 +2509,12 @@ export default function FacultyAppraisalForm() {
                           const isInvolved = e.target.value;
                           setStep2bActivities((prev) => {
                             const copy = [...prev];
-                            copy[index] = { ...copy[index], isInvolved };
+                            copy[index] = { ...copy[index], isInvolved: "Yes" };
                             return copy;
                           });
+                          if (isInvolved !== "Yes") {
+                            alert("All Step 2B rows are treated as included for mapping. 'No' is ignored.");
+                          }
                         }}
                       >
                         <option value="Yes">Yes</option>
@@ -2509,7 +2530,35 @@ export default function FacultyAppraisalForm() {
                           const credit = e.target.value;
                           setStep2bActivities((prev) => {
                             const copy = [...prev];
-                            copy[index] = { ...copy[index], credit };
+                            const next = { ...copy[index], credit };
+                            const maxCredit = getMaxCreditForSelection(next.section_key, next.activity || next.otherActivity, next.activityType);
+                            let numeric = Number(next.credit || 0);
+                            if (!Number.isFinite(numeric) || numeric < 0) numeric = 0;
+                            if (maxCredit > 0 && numeric > maxCredit) {
+                              alert(`Credit cannot exceed ${maxCredit} for selected activity. Value has been adjusted.`);
+                              numeric = maxCredit;
+                            }
+                            next.credit = String(numeric);
+                            copy[index] = next;
+
+                            const totals = { departmental: 0, institute: 0, society: 0 };
+                            copy.forEach((item) => {
+                              const activityName = item.otherActivity?.trim() || item.activity || "";
+                              if (!item.section_key || !activityName) return;
+                              const scope = getScopeForSelection(item.section_key, activityName, item.activityType);
+                              const value = Number(item.credit || 0);
+                              if (!Number.isFinite(value) || value < 0) return;
+                              if (scope === "departmental") totals.departmental += value;
+                              if (scope === "institute") totals.institute += value;
+                              if (scope === "society") totals.society += value;
+                            });
+                            if (totals.departmental > 20) {
+                              alert("Total departmental credits cannot exceed 20. Please reduce credits.");
+                            } else if (totals.institute > 10) {
+                              alert("Total institutional credits cannot exceed 10. Please reduce credits.");
+                            } else if (totals.society > 10) {
+                              alert("Total society credits cannot exceed 10. Please reduce credits.");
+                            }
                             return copy;
                           });
                         }}
@@ -2782,349 +2831,71 @@ export default function FacultyAppraisalForm() {
                 + Add Student Feedback Entry
               </button>
               <hr />
-              {/*new added */}
+              {/*new added */}              <h4>C/D/E. Activities Mapped From Step 2B</h4>
+              <p className="section-note">
+                Departmental, Institutional, and Society activities are auto-derived from Step 2B.
+                Edit activities in Step 2B only.
+              </p>
+              {errors.step2b_department_total && (
+                <div className="field-error">{errors.step2b_department_total}</div>
+              )}
+              {errors.step2b_institute_total && (
+                <div className="field-error">{errors.step2b_institute_total}</div>
+              )}
+              {errors.step2b_society_total && (
+                <div className="field-error">{errors.step2b_society_total}</div>
+              )}
+
               <h4>C. Departmental Activities (Max Credit 20)</h4>
-              {errors.department_total && (
-                <div className="field-error">{errors.department_total}</div>
+              {(deriveBucketsFromStep2B().departmental || []).length === 0 ? (
+                <div className="section-note">No departmental activities mapped from Step 2B.</div>
+              ) : (
+                (deriveBucketsFromStep2B().departmental || []).map((row, index) => (
+                  <div className="activity-card" key={`mapped-dept-${index}`}>
+                    <div className="activity-row">
+                      <input value={row.semester || ""} readOnly />
+                      <input value={row.activity || ""} readOnly />
+                      <input value={row.credit || ""} readOnly />
+                      <input value={row.criteria || ""} readOnly />
+                      <input value={row.enclosureNo || ""} readOnly />
+                    </div>
+                  </div>
+                ))
               )}
 
-              {departmentalActivities.map((row, index) => (
-                <div className="activity-card" key={index}>
-                  <div className="activity-row">
-
-                    <input
-                      placeholder="Semester"
-                      value={row.semester}
-                      onChange={(e) =>
-                        handleDeptChange(index, "semester", e.target.value)
-                      }
-                    />
-
-                    <select
-                      value={row.section_key || ""}
-                      onChange={(e) =>
-                        handleDeptChange(index, "section_key", e.target.value)
-                      }
-                    >
-                      <option value="">Select Section</option>
-                      {activitySections.map((section) => (
-                        <option key={section.section_key} value={section.section_key}>
-                          {section.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={row.activity}
-                      onChange={(e) =>
-                        handleDeptChange(index, "activity", e.target.value)
-                      }
-                      disabled={!row.section_key}
-                    >
-                      <option value="">Select Activity</option>
-                      {getSectionActivities(row.section_key).map((act, i) => (
-                        <option key={`${row.section_key}_${i}`} value={act}>
-                          {`${act} (Max ${getDepartmentPerActivityLimit()})`}
-                        </option>
-                      ))}
-                    </select>
-
-                    <input
-                      type="number"
-                      placeholder="Credit Point"
-                      value={row.credit}
-                      onChange={(e) =>
-                        handleDeptChange(index, "credit", e.target.value)
-                      }
-                    />
-                    <div className="section-note" style={{ marginTop: "4px" }}>
-                      Max allowed: {getDepartmentPerActivityLimit()}
-                    </div>
-
-                    <input
-                      placeholder="Criteria (e.g. 3 Point / semester)"
-                      value={row.criteria}
-                      onChange={(e) =>
-                        handleDeptChange(index, "criteria", e.target.value)
-                      }
-                    />
-
-                    <input
-                      placeholder="Enclosure No."
-                      value={row.enclosureNo}
-                      onChange={(e) =>
-                        handleDeptChange(index, "enclosureNo", e.target.value)
-                      }
-                    />
-
-                    {departmentalActivities.length > 1 && (
-                      <button
-                        type="button"
-                        className="btn-remove"
-                        onClick={() => removeDeptRow(index)}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  {errors[`dept_${index}_credit`] && (
-                    <div className="field-error">{errors[`dept_${index}_credit`]}</div>
-                  )}
-
-                  {String(row.activity || "").toLowerCase().includes("any other") && (
-                    <div className="activity-row">
-                      <input
-                        placeholder="Specify other departmental activity"
-                        value={row.otherActivity}
-                        onChange={(e) =>
-                          handleDeptChange(index, "otherActivity", e.target.value)
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={addDeptRow}
-              >
-                + Add Departmental Activity
-              </button>
-
-
-
-
-
-              <hr />
-              {/*new added */}
               <h4>D. Institute Activities (Max Credit 10)</h4>
-              {errors.institute_total && (
-                <div className="field-error">{errors.institute_total}</div>
+              {(deriveBucketsFromStep2B().institute || []).length === 0 ? (
+                <div className="section-note">No institutional activities mapped from Step 2B.</div>
+              ) : (
+                (deriveBucketsFromStep2B().institute || []).map((row, index) => (
+                  <div className="activity-card" key={`mapped-inst-${index}`}>
+                    <div className="activity-row">
+                      <input value={row.semester || ""} readOnly />
+                      <input value={row.activity || ""} readOnly />
+                      <input value={row.credit || ""} readOnly />
+                      <input value={row.criteria || ""} readOnly />
+                      <input value={row.enclosureNo || ""} readOnly />
+                    </div>
+                  </div>
+                ))
               )}
 
-              {instituteActivities.map((row, index) => (
-                <div className="activity-card" key={index}>
-                  <div className="activity-row">
-
-                    <input
-                      name="semester"
-                      placeholder="Semester"
-                      value={row.semester}
-                      onChange={(e) =>
-                        handleInstituteChange(index, "semester", e.target.value)
-                      }
-                    />
-
-                    <select
-                      name="activity"
-                      value={row.activity}
-                      onChange={(e) =>
-                        handleInstituteChange(index, "activity", e.target.value)
-                      }
-                    >
-                      <option value="">Select Activity</option>
-                      {INSTITUTE_ACTIVITIES.map((act, i) => (
-                        <option key={i} value={act}>
-                          {`${act} (Max ${getInstitutePerActivityLimit(act)})`}
-                        </option>
-                      ))}
-                    </select>
-
-                    <input
-                      type="number"
-                      name="credit"
-                      placeholder="Credit Point"
-                      value={row.credit}
-                      onChange={(e) =>
-                        handleInstituteChange(index, "credit", e.target.value)
-                      }
-                    />
-                    <div className="section-note" style={{ marginTop: "4px" }}>
-                      Max allowed: {row.activity ? getInstitutePerActivityLimit(row.activity) : "Select activity"}
-                    </div>
-
-                    <input
-                      name="criteria"
-                      placeholder="Criteria"
-                      value={row.criteria}
-                      onChange={(e) =>
-                        handleInstituteChange(index, "criteria", e.target.value)
-                      }
-                    />
-
-                    <input
-                      name="enclosureNo"
-                      placeholder="Enclosure No."
-                      value={row.enclosureNo}
-                      onChange={(e) =>
-                        handleInstituteChange(index, "enclosureNo", e.target.value)
-                      }
-                    />
-
-                    {instituteActivities.length > 1 && (
-                      <button
-                        type="button"
-                        className="btn-remove"
-                        onClick={() =>
-                          removeRow(setInstituteActivities, index)
-                        }
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  {errors[`inst_${index}_credit`] && (
-                    <div className="field-error">{errors[`inst_${index}_credit`]}</div>
-                  )}
-
-                  {String(row.activity || "").toLowerCase().includes("any other") && (
-                    <div className="activity-row">
-                      <input
-                        name="otherActivity"
-                        placeholder="Specify other institute activity"
-                        value={row.otherActivity}
-                        onChange={(e) =>
-                          handleInstituteChange(index, "otherActivity", e.target.value)
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={() =>
-                  addRow(setInstituteActivities, {
-                    semester: "",
-                    activity: "",
-                    credit: "",
-                    criteria: "",
-                    enclosureNo: "",
-                    otherActivity: "",
-                  })
-                }
-              >
-                + Add Institutional Activity
-              </button>
-
-              <hr />
-              {/*new added */}
-
-              {/* ================= STEP 3C: CONTRIBUTION TO SOCIETY ================= */}
               <h4>E. Contribution to Society (Max Credit 10)</h4>
-              {errors.society_total && (
-                <div className="field-error">{errors.society_total}</div>
-              )}
-
-              {societyActivities.map((row, index) => (
-                <div className="activity-card" key={index}>
-                  <div className="activity-row">
-
-                    <select
-                      name="activity"
-                      value={row.activity}
-                      onChange={(e) =>
-                        handleSocietyChange(index, "activity", e.target.value)
-                      }
-                    >
-                      <option value="">Select Activity</option>
-                      {SOCIETY_ACTIVITIES.map((act, i) => (
-                        <option key={i} value={act}>
-                          {`${act} (Max ${getSocietyPerActivityLimit()})`}
-                        </option>
-                      ))}
-                    </select>
-
-                    <input
-                      name="semester"
-                      placeholder="Semester / Year"
-                      value={row.semester}
-                      onChange={(e) =>
-                        handleSocietyChange(index, "semester", e.target.value)
-                      }
-                    />
-
-                    <input
-                      name="credit"
-                      placeholder="Credit Point"
-                      value={row.credit}
-                      onChange={(e) =>
-                        handleSocietyChange(index, "credit", e.target.value)
-                      }
-                    />
-                    <div className="section-note" style={{ marginTop: "4px" }}>
-                      Max allowed: {getSocietyPerActivityLimit()}
-                    </div>
-
-                    <input
-                      name="criteria"
-                      placeholder="Criteria (e.g. 5 Point / event)"
-                      value={row.criteria}
-                      onChange={(e) =>
-                        handleSocietyChange(index, "criteria", e.target.value)
-                      }
-                    />
-
-                    <input
-                      name="enclosureNo"
-                      placeholder="Enclosure No."
-                      value={row.enclosureNo}
-                      onChange={(e) =>
-                        handleSocietyChange(index, "enclosureNo", e.target.value)
-                      }
-                    />
-
-                    {societyActivities.length > 1 && (
-                      <button
-                        type="button"
-                        className="btn-remove"
-                        onClick={() =>
-                          removeRow(setSocietyActivities, index)
-                        }
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  {errors[`soc_${index}_credit`] && (
-                    <div className="field-error">{errors[`soc_${index}_credit`]}</div>
-                  )}
-
-                  {String(row.activity || "").toLowerCase().includes("any other") && (
+              {(deriveBucketsFromStep2B().society || []).length === 0 ? (
+                <div className="section-note">No society activities mapped from Step 2B.</div>
+              ) : (
+                (deriveBucketsFromStep2B().society || []).map((row, index) => (
+                  <div className="activity-card" key={`mapped-soc-${index}`}>
                     <div className="activity-row">
-                      <input
-                        name="otherActivity"
-                        placeholder="Specify other social activity"
-                        value={row.otherActivity}
-                        onChange={(e) =>
-                          handleSocietyChange(index, "otherActivity", e.target.value)
-                        }
-                      />
+                      <input value={row.semester || ""} readOnly />
+                      <input value={row.activity || ""} readOnly />
+                      <input value={row.credit || ""} readOnly />
+                      <input value={row.criteria || ""} readOnly />
+                      <input value={row.enclosureNo || ""} readOnly />
                     </div>
-                  )}
-                </div>
-              ))}
-
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={() =>
-                  addRow(setSocietyActivities, {
-                    activity: "",
-                    semester: "",
-                    credit: "",
-                    criteria: "",
-                    enclosureNo: "",
-                    otherActivity: ""
-                  })
-                }
-              >
-                + Add Society Contribution
-              </button>
+                  </div>
+                ))
+              )}
 
 
 
@@ -3894,6 +3665,7 @@ export default function FacultyAppraisalForm() {
     </div >
   );
 }
+
 
 
 

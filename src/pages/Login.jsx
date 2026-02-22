@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import "../styles/Login.css";
@@ -65,13 +65,39 @@ const routeByRole = (navigate, role, fallback = true) => {
 
 export default function Login() {
   const navigate = useNavigate();
+  const hasBootstrappedRef = useRef(false);
 
   const [email, setEmail] = useSessionState("login.email", "");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useSessionState("login.remember", false);
   const [error, setError] = useSessionState("login.error", "");
 
+  const getDefaultRouteForRole = (role) => {
+    const normalized = normalizeRole(role);
+    if (normalized === "FACULTY") return "/faculty/dashboard";
+    if (normalized === "HOD") return "/hod/dashboard";
+    if (normalized === "PRINCIPAL") return "/principal/dashboard";
+    if (normalized === "ADMIN") return "/admin/dashboard";
+    return null;
+  };
+
+  const isRouteAllowedForRole = (route, role) => {
+    const normalized = normalizeRole(role);
+    const path = String(route || "").toLowerCase();
+    if (!path || path === "/login" || path.startsWith("/forgot-password") || path.startsWith("/reset-password")) {
+      return false;
+    }
+    if (normalized === "FACULTY") return path.startsWith("/faculty/");
+    if (normalized === "HOD") return path.startsWith("/hod/");
+    if (normalized === "PRINCIPAL") return path.startsWith("/principal/");
+    if (normalized === "ADMIN") return path.startsWith("/admin/");
+    return false;
+  };
+
   useEffect(() => {
+    if (hasBootstrappedRef.current) return;
+    hasBootstrappedRef.current = true;
+
     const bootstrapAuth = async () => {
       const access = localStorage.getItem("access") || sessionStorage.getItem("access");
       if (!access) return;
@@ -88,11 +114,15 @@ export default function Login() {
         }
 
         const lastRoute = sessionStorage.getItem("lastRoute");
-        if (lastRoute && !["/login", "/forgot-password", "/reset-password"].includes(lastRoute)) {
+        if (isRouteAllowedForRole(lastRoute, normalizedRole)) {
           navigate(lastRoute, { replace: true });
           return;
         }
-        routeByRole(navigate, normalizedRole, false);
+        sessionStorage.removeItem("lastRoute");
+        const defaultRoute = getDefaultRouteForRole(normalizedRole);
+        if (defaultRoute) {
+          navigate(defaultRoute, { replace: true });
+        }
       } catch {
         clearAuthStorage();
       }
